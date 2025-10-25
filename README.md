@@ -25,17 +25,16 @@ Originally built for multi-backend AI inference (DirectML GPU, Intel NPU, CPU), 
 - 📦 **Automatic Dependency Management** - Installs required packages per node automatically# Run YOLOv8 detection across all backends
 
 ## 🛠️ Requirements# 
-Visualize and compare detection results uv run python workflow_cli.py --workflow workflows/yolov8_object_detection.json
 
-This project requires **[uv](https://github.com/astral-sh/uv)** as the package manager.uv run python visualize_detections.py
+This project requires **[uv](https://github.com/astral-sh/uv)** as the package manager.
 
 ### Install UV# Visualize and compare detection results
 
-**Windows (PowerShell):**# Try custom node examplesuv run python visualize_detections.py
+**Windows (PowerShell):**# Try custom node examples
 
 ```powershell
 
-powershell -c "irm https://astral.sh/uv/install.ps1 | iex"uv run python custom_node_example.py
+powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
 
 ```
 
