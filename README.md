@@ -27,9 +27,13 @@ Originally built for multi-backend AI inference (DirectML GPU, Intel NPU, CPU), 
 ## 🛠️ Requirements 
 This project requires **[uv](https://github.com/astral-sh/uv)** as the package manager.
 
+## Create Virtual Environment
+```bash
+uv sync
+
 ## Run Demo Workflow
 
 ```bash
 
-python function_workflow_engine.py workflows/modular_function_based_demo.json
+uv run python function_workflow_engine.py workflows/modular_function_based_demo.json
 
