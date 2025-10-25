@@ -6,21 +6,14 @@ A high-performance, modular workflow orchestration engine for Python with automa
 
 
 
-### 🎯 What is the Workflow Engine? High-performance, extensible workflow system for AI object detection with support for DirectML GPU, CUDA, NPU, and CPU backends. Features parallel execution, data session caching, and easy custom node creation.High-performance, extensible workflow system for AI object detection with support for DirectML GPU, CUDA, NPU, and CPU backends. Features parallel execution, data session caching, and easy custom node creation.
-
-
+####🎯 What is the Workflow Engine? 
+High-performance, extensible workflow system for AI object detection with support for DirectML GPU, CUDA, NPU, and CPU backends. Features parallel execution, data session caching, and easy custom node creation.High-performance, extensible workflow system for AI object detection with support for DirectML GPU, CUDA, NPU, and CPU backends. Features parallel execution, data session caching, and easy custom node creation.
 
 The Workflow Engine is a flexible task orchestration system that executes complex workflows by automatically discovering, managing, and executing modular Python nodes. It intelligently handles dependency conflicts through environment isolation and supports parallel execution with dependency resolution.
 
-
-
 Originally built for multi-backend AI inference (DirectML GPU, Intel NPU, CPU), the engine is designed to be **general-purpose** and can orchestrate any type of computational workflow.## 🚀 Quick Start
 
-
-
 ## ✨ Main Capabilities
-
-
 
 - 🔍 **Automatic Node Discovery** - Drop Python files in `workflow_nodes/` and they're automatically registered```powershell## 🚀 Quick Start
 
@@ -36,19 +29,11 @@ Originally built for multi-backend AI inference (DirectML GPU, Intel NPU, CPU), 
 
 - 📦 **Automatic Dependency Management** - Installs required packages per node automatically# Run YOLOv8 detection across all backends
 
-
-
 ## 🛠️ Requirements# Visualize and compare detection resultsuv run python workflow_cli.py --workflow workflows/yolov8_object_detection.json
-
-
 
 This project requires **[uv](https://github.com/astral-sh/uv)** as the package manager.uv run python visualize_detections.py
 
-
-
 ### Install UV# Visualize and compare detection results
-
-
 
 **Windows (PowerShell):**# Try custom node examplesuv run python visualize_detections.py
 
