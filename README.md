@@ -12,7 +12,7 @@ Originally built for multi-backend AI inference (DirectML GPU, Intel NPU, CPU), 
 
 ## ✨ Main Capabilities
 
-- 🔍 **Automatic Node Discovery** - Drop Python files in `workflow_nodes/` and they're automatically registered```powershell## 🚀 Quick Start
+- 🔍 **Automatic Node Discovery** - Drop Python files in `workflow_nodes/` and they're automatically registered```powershell
 
 - 🔀 **Parallel Execution** - Executes nodes concurrently when dependencies allow
 
