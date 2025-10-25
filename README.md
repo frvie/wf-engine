@@ -121,11 +121,15 @@ npu_inference(**results['load_image'])
 
 ---
 
-## 🛠️ Requirements 
+# How to Use
+
+##🛠️ UV as a package manager
 This project requires **[uv](https://github.com/astral-sh/uv)** as the package manager.
 
----
-
+### Create Virtual Environment
+```bash
+uv sync
+```
 ## Models
 ```bash
 # From Ultralytics
@@ -135,11 +139,9 @@ wget https://github.com/ultralytics/assets/releases/download/v0.0.0/yolov8s.pt -
 ```bash
 yolo export model=models/yolov8s.pt format=onnx
 ```
-### Create Virtual Environment
-```bash
-uv sync
-```
-save the models in the folder "models"
+Save the models in the folder "models"
+
+
 ### Run Demo Workflow
 
 ```bash
