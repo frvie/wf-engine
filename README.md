@@ -124,11 +124,20 @@ npu_inference(**results['load_image'])
 ## 🛠️ Requirements 
 This project requires **[uv](https://github.com/astral-sh/uv)** as the package manager.
 
+## Models
+Download YOLO models into the folder "models":
+```bash
+# From Ultralytics
+wget https://github.com/ultralytics/assets/releases/download/v0.0.0/yolov8s.pt -O [yolov8s.pt](http://_vscodecontentref_/2)
+
+# Export to ONNX
+yolo export model=models/yolov8s.pt format=onnx
+
 ## Create Virtual Environment
 ```bash
 uv sync
 ```
-
+save the models in the folder "models"
 ## Run Demo Workflow
 
 ```bash
