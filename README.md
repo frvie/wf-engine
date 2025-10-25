@@ -30,10 +30,10 @@ This project requires **[uv](https://github.com/astral-sh/uv)** as the package m
 ## Create Virtual Environment
 ```bash
 uv sync
+```
 
 ## Run Demo Workflow
 
 ```bash
-
 uv run python function_workflow_engine.py workflows/modular_function_based_demo.json
-
+```
