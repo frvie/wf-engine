@@ -1,0 +1,29 @@
+# Virtual environments
+.venv/
+list/
+workflow-envs/
+
+# Models
+models/
+
+# Logs
+logs/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Temporary files
+*.tmp
+*.log
+workflow_output.txt
