@@ -53,7 +53,7 @@
       "depends_on": ["load_image", "directml_model"],
       "inputs": {
         "confidence_threshold": 0.25,
-        "iterations": 100
+        "iterations": 50
       }
     },
     
@@ -63,7 +63,7 @@
       "depends_on": ["load_image", "cpu_model"],
       "inputs": {
         "confidence_threshold": 0.25,
-        "iterations": 5
+        "iterations": 50
       }
     },
     
@@ -73,7 +73,7 @@
       "depends_on": ["load_image", "npu_model"],
       "inputs": {
         "confidence_threshold": 0.25,
-        "iterations": 100
+        "iterations": 50
       }
     },
     
