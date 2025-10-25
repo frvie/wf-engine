@@ -119,11 +119,17 @@ npu_inference(**results['load_image'])
 ## 🛠️ UV as a package manager
 This project requires **[uv](https://github.com/astral-sh/uv)** as the package manager.
 
-### Create Virtual Environment
+## Clone the repository
+git clone https://github.com/frvie/wf-engine.git
+
+## Navigate to the project directory
+cd wf-engine
+
+## Create Virtual Environment
 ```bash
 uv sync
 ```
-## Models
+## Dowwnlaod the sample Yolo Models
 ```bash
 # From Ultralytics
 wget https://github.com/ultralytics/assets/releases/download/v0.0.0/yolov8s.pt -O [yolov8s.pt](http://_vscodecontentref_/2)
