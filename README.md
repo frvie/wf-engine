@@ -1,4 +1,4 @@
-# 🚀 Workflow Engine# 🔄 Multi-Backend AI Workflow Engine# 🔄 Multi-Backend AI Workflow Engine
+# 🚀 Workflow Engine
 
 A high-performance, modular workflow orchestration engine for Python with automatic node discovery, environment isolation, and multi-backend inference support.
 
