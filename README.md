@@ -124,6 +124,8 @@ npu_inference(**results['load_image'])
 ## 🛠️ Requirements 
 This project requires **[uv](https://github.com/astral-sh/uv)** as the package manager.
 
+
+
 ## Models
 Download YOLO models into the folder "models":
 ```bash
