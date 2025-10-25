@@ -1,8 +1,72 @@
-# 🔄 Multi-Backend AI Workflow Engine# 🔄 Multi-Backend AI Workflow Engine
+# 🚀 Workflow Engine# 🔄 Multi-Backend AI Workflow Engine# 🔄 Multi-Backend AI Workflow Engine
 
 
 
-High-performance, extensible workflow system for AI object detection with support for DirectML GPU, CUDA, NPU, and CPU backends. Features parallel execution, data session caching, and easy custom node creation.High-performance, extensible workflow system for AI object detection with support for DirectML GPU, CUDA, NPU, and CPU backends. Features parallel execution, data session caching, and easy custom node creation.
+A high-performance, modular workflow orchestration engine for Python with automatic node discovery, environment isolation, and multi-backend inference support.
+
+
+
+## 🎯 What is the Workflow Engine?High-performance, extensible workflow system for AI object detection with support for DirectML GPU, CUDA, NPU, and CPU backends. Features parallel execution, data session caching, and easy custom node creation.High-performance, extensible workflow system for AI object detection with support for DirectML GPU, CUDA, NPU, and CPU backends. Features parallel execution, data session caching, and easy custom node creation.
+
+
+
+The Workflow Engine is a flexible task orchestration system that executes complex workflows by automatically discovering, managing, and executing modular Python nodes. It intelligently handles dependency conflicts through environment isolation and supports parallel execution with dependency resolution.
+
+
+
+Originally built for multi-backend AI inference (DirectML GPU, Intel NPU, CPU), the engine is designed to be **general-purpose** and can orchestrate any type of computational workflow.## 🚀 Quick Start
+
+
+
+## ✨ Main Capabilities
+
+
+
+- 🔍 **Automatic Node Discovery** - Drop Python files in `workflow_nodes/` and they're automatically registered```powershell## 🚀 Quick Start
+
+- 🔀 **Parallel Execution** - Executes nodes concurrently when dependencies allow
+
+- 🔒 **Environment Isolation** - Runs nodes in isolated Python environments to handle conflicting dependencies# Run YOLOv8 detection across all backends
+
+- 📊 **Dependency Resolution** - Builds and executes workflows based on dependency graphs
+
+- ⚡ **Multi-Backend Inference** - Included example: DirectML (137 FPS), Intel NPU (58 FPS), CPU (18 FPS)uv run python workflow_cli.py --workflow workflows/yolov8_object_detection.json```powershell
+
+- 🎨 **Declarative Workflows** - Define workflows in simple JSON format
+
+- 📦 **Automatic Dependency Management** - Installs required packages per node automatically# Run YOLOv8 detection across all backends
+
+
+
+## 🛠️ Requirements# Visualize and compare detection resultsuv run python workflow_cli.py --workflow workflows/yolov8_object_detection.json
+
+
+
+This project requires **[uv](https://github.com/astral-sh/uv)** as the package manager.uv run python visualize_detections.py
+
+
+
+### Install UV# Visualize and compare detection results
+
+
+
+**Windows (PowerShell):**# Try custom node examplesuv run python visualize_detections.py
+
+```powershell
+
+powershell -c "irm https://astral.sh/uv/install.ps1 | iex"uv run python custom_node_example.py
+
+```
+
+```# Try custom node examples
+
+**Linux/macOS:**
+
+```bashuv run python custom_node_example.py
+
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+```## ✨ Features```
 
 
 
@@ -10,535 +74,1013 @@ High-performance, extensible workflow system for AI object detection with suppor
 
 
 
-```powershell## 🚀 Quick Start
+### 1. Clone the Repository- 🚄 **Multi-Backend Support**: DirectML GPU, CUDA, NPU, CPU## ✨ Features
 
-# Run YOLOv8 detection across all backends
+```bash
 
-uv run python workflow_cli.py --workflow workflows/yolov8_object_detection.json```powershell
+git clone https://github.com/frvie/wf-engine.git- ⚡ **Parallel Execution**: Run multiple backends simultaneously
 
-# Run YOLOv8 detection across all backends
+cd wf-engine
 
-# Visualize and compare detection resultsuv run python workflow_cli.py --workflow workflows/yolov8_object_detection.json
-
-uv run python visualize_detections.py
-
-# Visualize and compare detection results
-
-# Try custom node examplesuv run python visualize_detections.py
-
-uv run python custom_node_example.py
-
-```# Try custom node examples
-
-uv run python custom_node_example.py
-
-## ✨ Features```
+```- 💾 **Data Session Caching**: Share models and data across nodes- 🚄 **Multi-Backend Support**: DirectML GPU, CUDA, NPU, CPU
 
 
 
-- 🚄 **Multi-Backend Support**: DirectML GPU, CUDA, NPU, CPU## ✨ Features
+### 2. Create Virtual Environment with UV- 🔌 **Custom Nodes**: Easy plugin system for extending functionality- ⚡ **Parallel Execution**: Run multiple backends simultaneously
 
-- ⚡ **Parallel Execution**: Run multiple backends simultaneously
+```bash
 
-- 💾 **Data Session Caching**: Share models and data across nodes- 🚄 **Multi-Backend Support**: DirectML GPU, CUDA, NPU, CPU
+uv venv- 📊 **Performance Comparison**: Built-in benchmarking across backends- 💾 **Data Session Caching**: Share models and data across nodes
 
-- 🔌 **Custom Nodes**: Easy plugin system for extending functionality- ⚡ **Parallel Execution**: Run multiple backends simultaneously
-
-- 📊 **Performance Comparison**: Built-in benchmarking across backends- 💾 **Data Session Caching**: Share models and data across nodes
+```
 
 - 🎯 **Auto-Discovery**: Automatically finds and loads workflow nodes- 🔌 **Custom Nodes**: Easy plugin system for extending functionality
 
-- 📊 **Performance Comparison**: Built-in benchmarking across backends
+### 3. Activate Environment
 
-## 📊 Performance Results (RTX 5090)- 🎯 **Auto-Discovery**: Automatically finds and loads workflow nodes
+**Windows (PowerShell):**- 📊 **Performance Comparison**: Built-in benchmarking across backends
+
+```powershell
+
+.\.venv\Scripts\Activate.ps1## 📊 Performance Results (RTX 5090)- 🎯 **Auto-Discovery**: Automatically finds and loads workflow nodes
+
+```
 
 
 
-| Backend | FPS | Avg Time | Detections |winml/## 🚀 Quick Start
+**Linux/macOS:**
 
-|---------|-----|----------|------------|
+```bash| Backend | FPS | Avg Time | Detections |winml/## 🚀 Quick Start
 
-| **DirectML GPU** | 76.8 | 13.01ms | 14 |├── workflow_cli.py              # Main workflow executor
+source .venv/bin/activate
 
-| **NPU (OpenVINO)** | 45.8 | 21.84ms | 14 |
+```|---------|-----|----------|------------|
+
+
+
+### 4. Install Dependencies| **DirectML GPU** | 76.8 | 13.01ms | 14 |├── workflow_cli.py              # Main workflow executor
+
+```bash
+
+uv pip install -e .| **NPU (OpenVINO)** | 45.8 | 21.84ms | 14 |
+
+```
 
 | **CUDA (PyTorch)** | 29.9 | 33.46ms | 15 |├── workflow_orchestrator.py     # Workflow engine with parallel execution### 1. Install Dependencies
 
-| **CPU (ONNX)** | 13.9 | 72.01ms | 9 |
+### 5. Run Demo Workflow
 
-├── workflow_loader.py           # Workflow JSON parser```powershell
+```bash| **CPU (ONNX)** | 13.9 | 72.01ms | 9 |
 
-*Tested with YOLOv8s model on 640x640 images, 50 iterations*
+python function_workflow_engine.py workflows/modular_function_based_demo.json
 
-├── workflow_data_session.py     # Data caching systemuv sync
+```├── workflow_loader.py           # Workflow JSON parser```powershell
 
-## 📁 Project Structure
+
+
+## 📖 How to Use*Tested with YOLOv8s model on 640x640 images, 50 iterations*
+
+
+
+### Basic Workflow Execution├── workflow_data_session.py     # Data caching systemuv sync
+
+```bash
+
+python function_workflow_engine.py path/to/workflow.json## 📁 Project Structure
+
+```
 
 ├── framework_data_optimizer.py  # Memory optimization```
 
-```
+### Example Output
 
-winml/├── logging_config.py            # Centralized logging
+``````
 
-├── workflow_orchestrator.py    # Main workflow engine
+🚀 Starting Multi-Backend YOLO Inference (DirectML + NPU + CPU)
 
-├── workflow_cli.py              # CLI interface├── visualize_detections.py      # Detection visualization tool### 2. Run Generic Workflow
+⚡ Executing 4 nodes in parallel...winml/├── logging_config.py            # Centralized logging
 
-├── workflow_loader.py           # JSON workflow parser
+✅ load_image: completed
 
-├── workflow_data_session.py     # Data session caching│```powershell
+✅ directml_model: completed├── workflow_orchestrator.py    # Main workflow engine
+
+✅ cpu_model: completed  
+
+✅ npu_model: completed├── workflow_cli.py              # CLI interface├── visualize_detections.py      # Detection visualization tool### 2. Run Generic Workflow
+
+
+
+📊 Performance Comparison (3 backends tested):├── workflow_loader.py           # JSON workflow parser
+
+  🥇 DirectML: 7.3ms (137 FPS) - 1.00x
+
+  🥈 OpenVINO_NPU: 17.1ms (58 FPS) - 0.46x├── workflow_data_session.py     # Data session caching│```powershell
+
+  🥉 CPU: 51.3ms (19.5 FPS) - 0.15x
 
 ├── logging_config.py            # Centralized logging
 
-├── framework_data_optimizer.py  # Data optimization layer├── workflow-nodes/              # Modular workflow nodesuv run python generic_workflow_engine.py
+🎯 Detection Results:
 
-├── custom_node_example.py       # Custom node tutorial
+  DirectML - Top 5 of 125 detections:├── framework_data_optimizer.py  # Data optimization layer├── workflow-nodes/              # Modular workflow nodesuv run python generic_workflow_engine.py
 
-├── visualize_detections.py      # Detection visualization│   ├── directml_model_loader_node.py```
+    1. person (conf: 0.917) bbox: [23, 126, 206, 466]
 
-│
+    2. person (conf: 0.917) bbox: [24, 125, 205, 469]├── custom_node_example.py       # Custom node tutorial
 
-├── workflow-nodes/              # Workflow task nodes (12 nodes)│   ├── cpu_model_loader_node.py
+    ...
 
-│   ├── image_reader_node.py
-
-│   ├── *_model_loader_node.py   # Model loaders (4 backends)│   ├── npu_model_loader_node.py### 3. Run JSON-Defined Workflow
-
-│   ├── *_inference_node.py      # Inference nodes (4 backends)
-
-│   └── performance_stats_node.py│   ├── cuda_model_loader_node.py```powershell
-
-│
-
-├── workflows/                   # Workflow definitions│   ├── gpu_inference_node.pyuv run python workflow_cli.py
-
-│   ├── yolov8_object_detection.json  # Main YOLO workflow
-
-│   └── custom_node_demo.json         # Custom node example│   ├── cpu_inference_node.py```
-
-│
-
-├── models/                      # AI models│   ├── npu_inference_node.py
-
-│   ├── yolov8s.onnx            # For DirectML, CPU, NPU
-
-│   └── yolov8s.pt              # For CUDA│   ├── cuda_inference_node.py## 🎯 What It Does
-
-│
-
-├── input/                       # Sample images│   ├── image_reader_node.py
-
-│   ├── soccer.jpg
-
-│   └── desk.jpg│   └── performance_stats_node.py**Clean Architecture with Separation of Concerns**:
-
-│
-
-└── shared/                      # Shared utilities│
-
-    └── yolo_postprocessing.py
-
-```├── workflows/                   # Workflow definitions- **Generic Preprocessor**: Handles letterbox, center-crop, normalization for any model
+```├── visualize_detections.py      # Detection visualization│   ├── directml_model_loader_node.py```
 
 
 
-## 🎯 Usage Examples│   └── yolov8_object_detection.json- **Inference Nodes**: Focus only on inference (CPU/GPU/NPU) with no preprocessing
+## 🏗️ How the Workflow Engine Works│
 
 
 
-### Run Main Workflow│- **Generic Postprocessor**: Processes YOLO detections, classification outputs
+### Architecture Overview├── workflow-nodes/              # Workflow task nodes (12 nodes)│   ├── cpu_model_loader_node.py
 
 
 
-```powershell├── models/                      # AI models- **Parallel Execution**: Each phase runs optimally (sequential preprocessing, parallel inference)
+```│   ├── image_reader_node.py
 
-# Execute YOLOv8 detection with all backends
+┌─────────────────────────────────────────────────────────────┐
 
-uv run python workflow_cli.py --workflow workflows/yolov8_object_detection.json│   ├── yolov8s.onnx            # ONNX format for DirectML/CPU/NPU
+│                  Workflow JSON Definition                    ││   ├── *_model_loader_node.py   # Model loaders (4 backends)│   ├── npu_model_loader_node.py### 3. Run JSON-Defined Workflow
+
+└─────────────────┬───────────────────────────────────────────┘
+
+                  ││   ├── *_inference_node.py      # Inference nodes (4 backends)
+
+                  ▼
+
+┌─────────────────────────────────────────────────────────────┐│   └── performance_stats_node.py│   ├── cuda_model_loader_node.py```powershell
+
+│            Function Workflow Engine                          │
+
+│  • Loads workflow definition                                 ││
+
+│  • Discovers nodes automatically                             │
+
+│  • Builds dependency graph                                   │├── workflows/                   # Workflow definitions│   ├── gpu_inference_node.pyuv run python workflow_cli.py
+
+│  • Manages parallel execution                                │
+
+└─────────────────┬───────────────────────────────────────────┘│   ├── yolov8_object_detection.json  # Main YOLO workflow
+
+                  │
+
+      ┌───────────┴───────────┬──────────────┐│   └── custom_node_demo.json         # Custom node example│   ├── cpu_inference_node.py```
+
+      ▼                       ▼              ▼
+
+┌─────────────┐      ┌─────────────┐   ┌─────────────┐│
+
+│   Node A    │      │   Node B    │   │   Node C    │
+
+│ (in-process)│      │ (isolated)  │   │ (in-process)│├── models/                      # AI models│   ├── npu_inference_node.py
+
+└─────────────┘      └─────┬───────┘   └─────────────┘
+
+                           ││   ├── yolov8s.onnx            # For DirectML, CPU, NPU
+
+                           ▼
+
+              ┌────────────────────────┐│   └── yolov8s.pt              # For CUDA│   ├── cuda_inference_node.py## 🎯 What It Does
+
+              │  Isolated Environment  │
+
+              │  (subprocess execution)││
+
+              └────────────────────────┘
+
+```├── input/                       # Sample images│   ├── image_reader_node.py
 
 
 
-# Use custom image│   └── yolov8s.pt              # PyTorch format for CUDA## 🏆 Performance Results
-
-uv run python workflow_cli.py --workflow workflows/yolov8_object_detection.json --image path/to/image.jpg
-
-```│
+### Execution Flow│   ├── soccer.jpg
 
 
 
-### Create Custom Nodes├── input/                       # Input imagesFrom latest generic workflow run:
+1. **Load Workflow** - Parse JSON workflow definition│   └── desk.jpg│   └── performance_stats_node.py**Clean Architecture with Separation of Concerns**:
+
+2. **Node Discovery** - Scan `workflow_nodes/` directory for `*_node.py` files
+
+3. **Dependency Graph** - Build execution graph from `depends_on` relationships│
+
+4. **Environment Setup** - Initialize isolated environments per `environments.json`
+
+5. **Parallel Execution** - Execute nodes respecting dependencies└── shared/                      # Shared utilities│
+
+6. **Data Passing** - Pass outputs between nodes via `$node_id` references
+
+7. **Result Aggregation** - Collect and return final results    └── yolo_postprocessing.py
 
 
 
-```python├── output/                      # Detection results & visualizations
-
-# 1. Define your custom node
-
-class MyProcessorNode:└── archive/                     # Old/test files| Backend | Device | Performance | Architecture |
-
-    def execute(self, inputs):
-
-        # Your processing logic|---------|--------|-------------|--------------|
-
-        data = inputs.get('data', '')
-
-        result = data.upper()  # Example transformation```| **GPU** | DirectML | **374.6 FPS** | ✅ Clean Separation |
-
-        return {'success': True, 'result': result}
-
-| **NPU** | OpenVINO | **137.6 FPS** | ✅ Focused Inference |
-
-# 2. Register with the engine
-
-from workflow_orchestrator import WorkflowEngine## 🎯 Key Features| **CPU** | ONNX Runtime | **104.0 FPS** | ✅ Generic Processing |
-
-engine = WorkflowEngine()
-
-engine.register_custom_node('my_processor', MyProcessorNode)
+### Key Components```├── workflows/                   # Workflow definitions- **Generic Preprocessor**: Handles letterbox, center-crop, normalization for any model
 
 
 
-# 3. Use in workflow JSON### Multi-Backend Support**Total execution time: 0.47s** with clean architecture benefits
+- **`function_workflow_engine.py`** - Main orchestrator
+
+- **`workflow_decorator.py`** - `@workflow_node` decorator for node registration
+
+- **`workflow_environment_manager.py`** - Manages isolated Python environments## 🎯 Usage Examples│   └── yolov8_object_detection.json- **Inference Nodes**: Focus only on inference (CPU/GPU/NPU) with no preprocessing
+
+- **`environments.json`** - Environment definitions and node mappings
+
+- **`workflow_nodes/`** - Directory containing all workflow nodes
+
+
+
+## 📝 Workflow JSON Format### Run Main Workflow│- **Generic Postprocessor**: Processes YOLO detections, classification outputs
+
+
+
+A workflow is defined in JSON with the following structure:
+
+
+
+```json```powershell├── models/                      # AI models- **Parallel Execution**: Each phase runs optimally (sequential preprocessing, parallel inference)
 
 {
 
-    "nodes": [- **DirectML**: Windows GPU acceleration (AMD, Intel, NVIDIA)
+  "workflow": {# Execute YOLOv8 detection with all backends
 
-        {
+    "name": "My Workflow",
 
-            "id": "process_step",- **CUDA**: Native NVIDIA GPU acceleration## 🔧 Technical Architecture
+    "description": "Description of what this workflow does",uv run python workflow_cli.py --workflow workflows/yolov8_object_detection.json│   ├── yolov8s.onnx            # ONNX format for DirectML/CPU/NPU
 
-            "type": "my_processor",
+    "settings": {
 
-            "depends_on": ["previous_step"]- **NPU**: Intel Neural Processing Unit
+      "max_parallel_nodes": 4
 
-        }
+    }
 
-    ]- **CPU**: ONNX Runtime fallback### Key Benefits: Clean Separation
+  },# Use custom image│   └── yolov8s.pt              # PyTorch format for CUDA## 🏆 Performance Results
 
-}
+  
 
-```- **Generic Nodes**: Reusable across all AI model types
-
-
-
-### Load Nodes from Custom Directory### Performance Optimizations- **Focused Inference**: No preprocessing logic mixed with inference
-
-
-
-```python- ✅ Plugin-based isolation (no subprocess overhead)- **Parallel Phases**: Optimal execution strategy per workflow phase
-
-# Load additional nodes from custom directories
-
-engine = WorkflowEngine(- ✅ Parallel node execution- **JSON Workflows**: Declarative workflow definitions
-
-    nodes_directory="workflow-nodes",
-
-    custom_node_paths=["my_custom_nodes", "/another/path"]- ✅ Data session caching
-
-)
-
-- ✅ Shared memory optimization### Execution Phases
-
-# List all available nodes
-
-available_nodes = engine.list_available_nodes()- ✅ Model instance caching (10-14x speedup)1. **Data Loading**: Parallel (image + model loading)
-
-print(f"Found {len(available_nodes)} nodes")
-
-```2. **Preprocessing**: Sequential (shared tensor for all backends)
-
-
-
-## 🔧 Workflow Definition### Architecture3. **Inference**: Parallel (GPU, CPU, NPU simultaneously)
-
-
-
-Workflows are defined in JSON format:- **Modular nodes**: Each component is a standalone node4. **Postprocessing**: Parallel (per-backend result processing)
-
-
-
-```json- **Data sessions**: Efficient model/data sharing5. **Analysis**: Sequential (aggregate statistics)
-
-{
-
-  "name": "YOLOv8 Object Detection",- **Parallel execution**: All backends run concurrently
-
-  "nodes": [
-
-    {- **Timing breakdown**: Separate loading vs inference phases## 📦 Dependencies
-
-      "id": "load_image",
-
-      "type": "image_reader_node",
-
-      "parameters": {
-
-        "image_path": "input/soccer.jpg"## 🔧 Configuration```toml
-
-      }
-
-    },dependencies = [
+  "nodes": [uv run python workflow_cli.py --workflow workflows/yolov8_object_detection.json --image path/to/image.jpg
 
     {
 
-      "id": "gpu_inference",### Workflow JSON Structure    "numpy>=1.24.0,<2.0.0",
+      "id": "unique_node_id",```│
 
-      "type": "gpu_inference_node",
+      "function": "workflow_nodes.module_name.function_name",
 
-      "depends_on": ["load_image"],```json    "pillow>=10.0.0", 
+      "depends_on": ["other_node_id"],
 
-      "parameters": {
+      "inputs": {
 
-        "confidence_threshold": 0.25,{    "requests>=2.31.0",
+        "param1": "value1",### Create Custom Nodes├── input/                       # Input imagesFrom latest generic workflow run:
 
-        "iterations": 50
+        "param2": "$other_node_id"
 
-      },  "name": "YOLOv8 Object Detection",    "onnxruntime-directml==1.20.0",  # GPU + CPU inference
+      }
 
-      "parallel_group": "inference"
+    }
 
-    }  "nodes": [    "onnxruntime==1.20.0",           # CPU fallback
+  ]```python├── output/                      # Detection results & visualizations
+
+}
+
+```# 1. Define your custom node
+
+
+
+### Field Descriptionsclass MyProcessorNode:└── archive/                     # Old/test files| Backend | Device | Performance | Architecture |
+
+
+
+| Field | Description |    def execute(self, inputs):
+
+|-------|-------------|
+
+| `workflow.name` | Human-readable workflow name |        # Your processing logic|---------|--------|-------------|--------------|
+
+| `workflow.description` | Workflow description |
+
+| `workflow.settings.max_parallel_nodes` | Maximum nodes to execute concurrently |        data = inputs.get('data', '')
+
+| `nodes[].id` | Unique identifier for the node |
+
+| `nodes[].function` | Python path to the node function |        result = data.upper()  # Example transformation```| **GPU** | DirectML | **374.6 FPS** | ✅ Clean Separation |
+
+| `nodes[].depends_on` | List of node IDs that must complete first |
+
+| `nodes[].inputs` | Input parameters for the node |        return {'success': True, 'result': result}
+
+| `$node_id` syntax | Reference to output of another node |
+
+| **NPU** | OpenVINO | **137.6 FPS** | ✅ Focused Inference |
+
+### Example Workflow
+
+# 2. Register with the engine
+
+```json
+
+{from workflow_orchestrator import WorkflowEngine## 🎯 Key Features| **CPU** | ONNX Runtime | **104.0 FPS** | ✅ Generic Processing |
+
+  "workflow": {
+
+    "name": "Image Processing Pipeline",engine = WorkflowEngine()
+
+    "settings": {
+
+      "max_parallel_nodes": 3engine.register_custom_node('my_processor', MyProcessorNode)
+
+    }
+
+  },
+
+  
+
+  "nodes": [# 3. Use in workflow JSON### Multi-Backend Support**Total execution time: 0.47s** with clean architecture benefits
+
+    {
+
+      "id": "load_image",{
+
+      "function": "workflow_nodes.load_image_node.load_image_node",
+
+      "depends_on": [],    "nodes": [- **DirectML**: Windows GPU acceleration (AMD, Intel, NVIDIA)
+
+      "inputs": {
+
+        "image_path": "input/photo.jpg"        {
+
+      }
+
+    },            "id": "process_step",- **CUDA**: Native NVIDIA GPU acceleration## 🔧 Technical Architecture
+
+    {
+
+      "id": "process_image",            "type": "my_processor",
+
+      "function": "workflow_nodes.process_node.process_node",
+
+      "depends_on": ["load_image"],            "depends_on": ["previous_step"]- **NPU**: Intel Neural Processing Unit
+
+      "inputs": {
+
+        "image_data": "$load_image",        }
+
+        "filter": "blur"
+
+      }    ]- **CPU**: ONNX Runtime fallback### Key Benefits: Clean Separation
+
+    },
+
+    {}
+
+      "id": "save_result",
+
+      "function": "workflow_nodes.save_node.save_node",```- **Generic Nodes**: Reusable across all AI model types
+
+      "depends_on": ["process_image"],
+
+      "inputs": {
+
+        "data": "$process_image",
+
+        "output_path": "output/result.jpg"### Load Nodes from Custom Directory### Performance Optimizations- **Focused Inference**: No preprocessing logic mixed with inference
+
+      }
+
+    }
 
   ]
 
-}    {    "openvino>=2024.6.0",            # NPU inference
+}```python- ✅ Plugin-based isolation (no subprocess overhead)- **Parallel Phases**: Optimal execution strategy per workflow phase
 
 ```
 
-      "id": "load_directml_model",]
+# Load additional nodes from custom directories
 
-### Workflow Features
+## 🔧 Creating Custom Workflow Nodes
 
-      "type": "directml_model_loader_node",```
+engine = WorkflowEngine(- ✅ Parallel node execution- **JSON Workflows**: Declarative workflow definitions
 
-- **Dependencies**: `depends_on` specifies execution order
+### Step 1: Create Node File
 
-- **Parallel Groups**: Nodes with same `parallel_group` run concurrently      "parameters": {
+    nodes_directory="workflow-nodes",
 
-- **Parameters**: Custom parameters passed to each node
+Create a new Python file in `workflow_nodes/` (must end with `_node.py`):
+
+    custom_node_paths=["my_custom_nodes", "/another/path"]- ✅ Data session caching
+
+**`workflow_nodes/my_custom_node.py`**
+
+```python)
+
+"""
+
+My Custom Node- ✅ Shared memory optimization### Execution Phases
+
+
+
+Description of what this node does.# List all available nodes
+
+"""
+
+available_nodes = engine.list_available_nodes()- ✅ Model instance caching (10-14x speedup)1. **Data Loading**: Parallel (image + model loading)
+
+from workflow_decorator import workflow_node
+
+print(f"Found {len(available_nodes)} nodes")
+
+@workflow_node("my_custom_node", 
+
+               dependencies=["numpy", "pillow"],  # Optional```2. **Preprocessing**: Sequential (shared tensor for all backends)
+
+               isolation_mode="auto",              # Optional: "auto", "none", "subprocess"
+
+               environment="custom-env")           # Optional: isolated environment name
+
+def my_custom_node(input_data: str, threshold: float = 0.5):
+
+    """## 🔧 Workflow Definition### Architecture3. **Inference**: Parallel (GPU, CPU, NPU simultaneously)
+
+    Process data with custom logic
+
+    
+
+    Args:
+
+        input_data: Input data to processWorkflows are defined in JSON format:- **Modular nodes**: Each component is a standalone node4. **Postprocessing**: Parallel (per-backend result processing)
+
+        threshold: Processing threshold
+
+        
+
+    Returns:
+
+        Dictionary with results```json- **Data sessions**: Efficient model/data sharing5. **Analysis**: Sequential (aggregate statistics)
+
+    """
+
+    try:{
+
+        # Your custom logic here
+
+        result = process_data(input_data, threshold)  "name": "YOLOv8 Object Detection",- **Parallel execution**: All backends run concurrently
+
+        
+
+        return {  "nodes": [
+
+            "status": "success",
+
+            "result": result,    {- **Timing breakdown**: Separate loading vs inference phases## 📦 Dependencies
+
+            "metadata": {
+
+                "threshold": threshold      "id": "load_image",
+
+            }
+
+        }      "type": "image_reader_node",
+
+    except Exception as e:
+
+        return {"error": f"Processing failed: {str(e)}"}      "parameters": {
+
+```
+
+        "image_path": "input/soccer.jpg"## 🔧 Configuration```toml
+
+### Step 2: Add to Workflow
+
+      }
+
+Reference your node in a workflow JSON:
+
+    },dependencies = [
+
+```json
+
+{    {
+
+  "nodes": [
+
+    {      "id": "gpu_inference",### Workflow JSON Structure    "numpy>=1.24.0,<2.0.0",
+
+      "id": "custom_step",
+
+      "function": "workflow_nodes.my_custom_node.my_custom_node",      "type": "gpu_inference_node",
+
+      "depends_on": ["previous_step"],
+
+      "inputs": {      "depends_on": ["load_image"],```json    "pillow>=10.0.0", 
+
+        "input_data": "$previous_step",
+
+        "threshold": 0.75      "parameters": {
+
+      }
+
+    }        "confidence_threshold": 0.25,{    "requests>=2.31.0",
+
+  ]
+
+}        "iterations": 50
+
+```
+
+      },  "name": "YOLOv8 Object Detection",    "onnxruntime-directml==1.20.0",  # GPU + CPU inference
+
+### Step 3: Run Workflow
+
+      "parallel_group": "inference"
+
+The engine automatically discovers and loads your node:
+
+    }  "nodes": [    "onnxruntime==1.20.0",           # CPU fallback
+
+```bash
+
+python function_workflow_engine.py workflows/my_workflow.json  ]
+
+```
+
+}    {    "openvino>=2024.6.0",            # NPU inference
+
+### Node Decorator Parameters
+
+```
+
+| Parameter | Description | Default |
+
+|-----------|-------------|---------|      "id": "load_directml_model",]
+
+| `name` | Unique node identifier | Required |
+
+| `dependencies` | List of Python packages required | `[]` |### Workflow Features
+
+| `isolation_mode` | Execution mode: `"auto"`, `"none"`, `"subprocess"` | `"auto"` |
+
+| `environment` | Name of isolated environment from `environments.json` | `None` |      "type": "directml_model_loader_node",```
+
+
+
+### Node Function Requirements- **Dependencies**: `depends_on` specifies execution order
+
+
+
+✅ **Must:**- **Parallel Groups**: Nodes with same `parallel_group` run concurrently      "parameters": {
+
+- Be decorated with `@workflow_node`
+
+- Return a dictionary (success) or dict with `"error"` key (failure)- **Parameters**: Custom parameters passed to each node
+
+- Accept parameters matching workflow JSON inputs
 
 - **Data Sessions**: Automatically caches models and data between nodes        "model_path": "models/yolov8s.onnx",## 🎯 Usage Examples
 
+❌ **Don't:**
 
+- Use global state (nodes may run in separate processes)
+
+- Assume execution order beyond declared dependencies
 
 ## 🏗️ Architecture        "device_id": 1  // GPU 1 = RTX 5090
 
+## 🔒 Node Isolation System
 
+
+
+The engine supports three isolation modes to handle dependency conflicts:
 
 ### Core Components      }### Generic Workflow Engine
 
-
-
-1. **Workflow Orchestrator** (`workflow_orchestrator.py`)    }```powershell
-
-   - Main execution engine
-
-   - Handles node loading, dependency resolution  ],# Run clean architecture demonstration
-
-   - Manages parallel execution
-
-   - Auto-discovers nodes from directories  "execution_config": {uv run python generic_workflow_engine.py
+### 1. In-Process Execution (`isolation_mode="none"`)
 
 
 
-2. **Data Session** (`workflow_data_session.py`)    "use_data_session": true,```
+**When to use:**
 
-   - Thread-safe key-value store
+- No dependency conflicts with other nodes1. **Workflow Orchestrator** (`workflow_orchestrator.py`)    }```powershell
+
+- Need maximum performance
+
+- Simple, pure Python operations   - Main execution engine
+
+
+
+**Example:**   - Handles node loading, dependency resolution  ],# Run clean architecture demonstration
+
+```python
+
+@workflow_node("simple_processor", isolation_mode="none")   - Manages parallel execution
+
+def simple_processor(data):
+
+    return {"processed": data.upper()}   - Auto-discovers nodes from directories  "execution_config": {uv run python generic_workflow_engine.py
+
+```
+
+
+
+**Behavior:**
+
+- Runs in main Python process2. **Data Session** (`workflow_data_session.py`)    "use_data_session": true,```
+
+- Direct memory access
+
+- Fastest execution   - Thread-safe key-value store
+
+- Shares dependencies with main environment
 
    - Namespace isolation per backend    "parallel_execution": true
 
+### 2. Automatic Isolation (`isolation_mode="auto"`)
+
    - Caches models and preprocessed data
 
-   - Reduces redundant loading (10-14x speedup)  }### JSON Workflow Engine
+**When to use:**
+
+- Default choice for most nodes   - Reduces redundant loading (10-14x speedup)  }### JSON Workflow Engine
+
+- Let engine decide based on `dependencies` parameter
+
+- Want portability across environments
 
 
 
-3. **Workflow Nodes** (`workflow-nodes/`)}```powershell
+**Example:**3. **Workflow Nodes** (`workflow-nodes/`)}```powershell
 
-   - Modular, reusable components
+```python
 
-   - Each node implements `execute(inputs)` method```# Run AI detection workflow from JSON
+@workflow_node("flexible_node",    - Modular, reusable components
 
-   - Discoverable via file naming convention
+               dependencies=["numpy"],
 
-   - Support for both short and full namesuv run python workflow_cli.py
+               isolation_mode="auto")   - Each node implements `execute(inputs)` method```# Run AI detection workflow from JSON
+
+def flexible_node(data):
+
+    import numpy as np   - Discoverable via file naming convention
+
+    return {"result": np.array(data).mean()}
+
+```   - Support for both short and full namesuv run python workflow_cli.py
 
 
 
-### Supported Backends## 📈 Benchmarks```
+**Behavior:**
+
+- Engine checks for dependency conflicts
+
+- Runs in-process if safe### Supported Backends## 📈 Benchmarks```
+
+- Falls back to subprocess if conflicts detected
+
+- Automatic dependency installation
 
 
 
-| Backend | Framework | Hardware | Use Case |
+### 3. Subprocess Isolation (`environment="env_name"`)| Backend | Framework | Hardware | Use Case |
 
-|---------|-----------|----------|----------|
 
-| **DirectML** | ONNX Runtime | RTX 5090 GPU | Best performance on Windows |### Timing Breakdown (50 iterations)### Workflow Management
+
+**When to use:**|---------|-----------|----------|----------|
+
+- Known dependency conflicts (e.g., `onnxruntime` vs `onnxruntime-directml`)
+
+- Require specific library versions| **DirectML** | ONNX Runtime | RTX 5090 GPU | Best performance on Windows |### Timing Breakdown (50 iterations)### Workflow Management
+
+- Need complete environment separation
 
 | **CUDA** | PyTorch | RTX 5090 GPU | Native CUDA acceleration |
 
-| **NPU** | OpenVINO | Intel AI Boost | Low-power AI inference |- **Loading Phase**: 2.3s (models + image)```powershell
+**Example:**
 
-| **CPU** | ONNX Runtime | CPU cores | Fallback option |
+```python| **NPU** | OpenVINO | Intel AI Boost | Low-power AI inference |- **Loading Phase**: 2.3s (models + image)```powershell
 
-- **Inference Phase**: 3.7s (parallel execution)# List available workflows
+@workflow_node("directml_inference",
 
-### Execution Flow
+               dependencies=["onnxruntime-directml"],| **CPU** | ONNX Runtime | CPU cores | Fallback option |
 
-- **Total Workflow**: 6.0suv run python workflow_loader.py
+               isolation_mode="auto",
+
+               environment="directml-env")- **Inference Phase**: 3.7s (parallel execution)# List available workflows
+
+def directml_inference(model_path):
+
+    # Runs in isolated directml-env subprocess### Execution Flow
+
+    import onnxruntime as ort
+
+    session = ort.InferenceSession(model_path, - **Total Workflow**: 6.0suv run python workflow_loader.py
+
+                                   providers=['DmlExecutionProvider'])
+
+    return {"session": "created"}```
 
 ```
 
 1. Load Workflow JSON
 
+**Behavior:**
+
+- Runs in separate Python subprocess   ↓
+
+- Uses environment defined in `environments.json`
+
+- Complete dependency isolation2. Discover Available Nodes### Detection Quality# Load specific workflow
+
+- Data serialized via pickle
+
    ↓
 
-2. Discover Available Nodes### Detection Quality# Load specific workflow
-
-   ↓
+### Environment Configuration
 
 3. Build Dependency Graph- DirectML & NPU: 14 objects (11 people, 2 cars, 1 ball)python -c "from workflow_loader import load_workflow; print(load_workflow('generic_ai_workflow.json'))"
 
-   ↓
-
-4. Load Models (Parallel)- CUDA: 15 objects (11 people, 3 cars, 1 ball)```
-
-   - DirectML Model Loader
-
-   - CPU Model Loader- CPU: 9 objects (7 people, 1 car, 1 ball)
-
-   - NPU Model Loader
-
-   - CUDA Model Loader### Core Inference
+Define isolated environments in `environments.json`:
 
    ↓
 
-5. Run Inference (Parallel)## 🛠️ Development```powershell
+```json
 
-   - GPU Inference
+{4. Load Models (Parallel)- CUDA: 15 objects (11 people, 3 cars, 1 ball)```
 
-   - CPU Inference# Test GPU inference
+  "environments": {
 
-   - NPU Inference
+    "directml-env": {   - DirectML Model Loader
 
-   - CUDA Inference### Adding a New Backenduv run python winml_inference.py gpu:0 1000
+      "path": "workflow-envs/directml-env",
 
-   ↓
+      "requirements": [   - CPU Model Loader- CPU: 9 objects (7 people, 1 car, 1 ball)
 
-6. Collect & Compare Results1. Create model loader node: `{backend}_model_loader_node.py`
+        "onnxruntime-directml",
+
+        "numpy",   - NPU Model Loader
+
+        "opencv-python"
+
+      ],   - CUDA Model Loader### Core Inference
+
+      "description": "DirectML GPU acceleration environment"
+
+    },   ↓
+
+    "custom-env": {
+
+      "path": "workflow-envs/custom-env",5. Run Inference (Parallel)## 🛠️ Development```powershell
+
+      "requirements": [
+
+        "tensorflow==2.13.0",   - GPU Inference
+
+        "pandas"
+
+      ]   - CPU Inference# Test GPU inference
+
+    }
+
+  },   - NPU Inference
+
+  
+
+  "node_type_mappings": {   - CUDA Inference### Adding a New Backenduv run python winml_inference.py gpu:0 1000
+
+    "directml_inference_node": "directml-env",
+
+    "tensorflow_node": "custom-env"   ↓
+
+  }
+
+}6. Collect & Compare Results1. Create model loader node: `{backend}_model_loader_node.py`
+
+```
 
    - Performance Stats
+
+### Isolation Decision Tree
 
    - Detection Visualization2. Create inference node: `{backend}_inference_node.py`# Test NPU inference  
 
 ```
 
-3. Add to workflow JSON with appropriate namespaceuv run python winml_inference.py npu:0 1000
+                    Node with @workflow_node```
 
-## 🔌 Custom Nodes
+                            │
 
-4. Configure device parameters```
+                            ▼3. Add to workflow JSON with appropriate namespaceuv run python winml_inference.py npu:0 1000
 
-### Method 1: Programmatic Registration
+                    Has environment param?
 
+                    ┌──────┴──────┐## 🔌 Custom Nodes
 
+                   YES            NO
 
-```python
+                    │              │4. Configure device parameters```
 
-class TextProcessorNode:### Custom Workflows## 🎉 Benefits
+                    ▼              ▼
 
-    def execute(self, inputs):
+            Run in specified   isolation_mode?### Method 1: Programmatic Registration
 
-        text = inputs.get('text', '')Create new JSON files in `workflows/` following the schema in `yolov8_object_detection.json`.
+            environment        ┌─────┴─────┐
+
+            (subprocess)      none        auto
+
+                              │            │
+
+                              ▼            ▼```python
+
+                        Run in-process  Check conflicts
+
+                        (main env)      ┌────┴────┐class TextProcessorNode:### Custom Workflows## 🎉 Benefits
+
+                                       YES       NO
+
+                                        │         │    def execute(self, inputs):
+
+                                        ▼         ▼
+
+                                   Subprocess  In-process        text = inputs.get('text', '')Create new JSON files in `workflows/` following the schema in `yolov8_object_detection.json`.
+
+```
 
         return {'processed': text.upper()}
 
+### Cross-Process Data Sharing
+
 ✅ **Clean Architecture**: Separation of preprocessing, inference, postprocessing  
+
+For data that can't be serialized (e.g., file paths):
 
 engine = WorkflowEngine()
 
-engine.register_custom_node('text_processor', TextProcessorNode)## 📊 Visualization✅ **Generic Nodes**: Reusable across different AI model types  
+```python
+
+# In load_image_node.pyengine.register_custom_node('text_processor', TextProcessorNode)## 📊 Visualization✅ **Generic Nodes**: Reusable across different AI model types  
+
+from workflow_nodes.load_image_node import _IMAGE_CACHE
 
 ```
 
-✅ **Parallel Execution**: Optimal performance at each workflow phase  
+# Store data globally
 
-### Method 2: File-Based Discovery
+_IMAGE_CACHE['image_path'] = '/path/to/image.jpg'✅ **Parallel Execution**: Optimal performance at each workflow phase  
 
-```powershell✅ **JSON Workflows**: Declarative, versionable workflow definitions  
 
-Create a file in `workflow-nodes/` or custom directory:
 
-# Generate detection comparison images✅ **Multi-Backend**: CPU, GPU, NPU support in single environment  
+# Access in isolated node### Method 2: File-Based Discovery
 
-```python
+test_image = _IMAGE_CACHE.get('image_path')
 
-# my_custom_nodes/filter_node.pyuv run python visualize_detections.py
+``````powershell✅ **JSON Workflows**: Declarative, versionable workflow definitions  
+
+
+
+## 📊 Current Example: Multi-Backend InferenceCreate a file in `workflow-nodes/` or custom directory:
+
+
+
+The included workflow demonstrates real-world usage with conflicting dependencies:# Generate detection comparison images✅ **Multi-Backend**: CPU, GPU, NPU support in single environment  
+
+
+
+**Backends:**```python
+
+- **DirectML** (RTX 5090): 137 FPS - Isolated subprocess (onnxruntime-directml)
+
+- **Intel NPU**: 58 FPS - In-process (OpenVINO, no conflicts)# my_custom_nodes/filter_node.pyuv run python visualize_detections.py
+
+- **CPU**: 18 FPS - In-process (onnxruntime)
 
 class FilterNode:
 
-    def execute(self, inputs):Perfect for **production AI workflows** with clean, maintainable architecture! 🚀
+**Why Isolation Needed:**
 
-        data = inputs.get('data', [])
+- `onnxruntime` and `onnxruntime-directml` **cannot coexist** in same environment    def execute(self, inputs):Perfect for **production AI workflows** with clean, maintainable architecture! 🚀
 
-        filtered = [x for x in data if x > 0]# Output files:## 🛠️ Development
+- DirectML runs in isolated `directml-env` subprocess
 
-        return {'success': True, 'filtered': filtered}
-
-```# - output/detections_comparison.jpg (2x2 grid)
+- NPU and CPU run in-process in main environment (compatible)        data = inputs.get('data', [])
 
 
+
+## 🎯 Use Cases        filtered = [x for x in data if x > 0]# Output files:## 🛠️ Development
+
+
+
+- **Multi-Backend AI Inference** - Run models on different hardware accelerators        return {'success': True, 'filtered': filtered}
+
+- **ETL Pipelines** - Extract, transform, load data with isolated environments
+
+- **Image Processing** - Parallel processing with different libraries```# - output/detections_comparison.jpg (2x2 grid)
+
+- **Scientific Computing** - Orchestrate complex computational workflows
+
+- **Data Analysis** - Coordinate pandas, numpy, scikit-learn operations
+
+- **Model Training** - Manage training across different ML frameworks
 
 Load automatically:# - output/detections_directml.jpg### Adding New Workflow Nodes
 
+## 📚 Project Structure
 
 
-```python# - output/detections_cuda.jpg1. Create node class in `workflow-nodes/` inheriting from `WorkflowNode`
-
-engine = WorkflowEngine(custom_node_paths=["my_custom_nodes"])
-
-# FilterNode is now available as 'filter' or 'filter_node'# - output/detections_npu.jpg2. Implement `execute()` method
 
 ```
 
-# - output/detections_cpu.jpg3. Add node type to workflow JSON definitions
+workflow_engine/```python# - output/detections_cuda.jpg1. Create node class in `workflow-nodes/` inheriting from `WorkflowNode`
 
-### Node Discovery
+├── function_workflow_engine.py      # Main orchestrator
+
+├── workflow_decorator.py            # Node decorator systemengine = WorkflowEngine(custom_node_paths=["my_custom_nodes"])
+
+├── workflow_environment_manager.py  # Environment isolation
+
+├── inference_engine.py              # YOLO inference utilities# FilterNode is now available as 'filter' or 'filter_node'# - output/detections_npu.jpg2. Implement `execute()` method
+
+├── environments.json                # Environment definitions
+
+├── workflow_nodes/                  # Modular workflow nodes```
+
+│   ├── load_image_node.py
+
+│   ├── cpu_inference_node.py# - output/detections_cpu.jpg3. Add node type to workflow JSON definitions
+
+│   ├── directml_inference_node.py
+
+│   ├── npu_inference_node.py### Node Discovery
+
+│   └── performance_stats_node.py
+
+├── workflows/                       # Workflow definitions```
+
+│   └── modular_function_based_demo.json
+
+├── utilities/                       # Shared utilitiesThe engine automatically discovers nodes with both naming conventions:
+
+│   ├── logging_config.py
+
+│   └── shared_memory_utils.py- `my_node.py` → `my_node`### Creating New Workflows
+
+└── input/                          # Test data
+
+    └── soccer.jpg- `my_node_node.py` → `my_node` and `my_node_node`
 
 ```
-
-The engine automatically discovers nodes with both naming conventions:
-
-- `my_node.py` → `my_node`### Creating New Workflows
-
-- `my_node_node.py` → `my_node` and `my_node_node`
 
 ## 🔍 Hardware Utilization1. Create JSON file in `workflows/` directory
 
+## 🤝 Contributing
+
 ## 📦 Installation
 
-2. Define nodes, dependencies, and execution groups
+Contributions are welcome! Feel free to:
 
-```powershell
+- Add new workflow nodes2. Define nodes, dependencies, and execution groups
+
+- Improve isolation mechanisms
+
+- Enhance documentation```powershell
+
+- Report issues
 
 # Clone the repository- **GPU 0 (Intel iGPU)**: Not used (4% display only)3. Load with `workflow_loader.load_workflow()`
 
+## 📄 License
+
 git clone https://github.com/frvie/workflows.git
+
+MIT License - See LICENSE file for details
 
 cd workflows- **GPU 1 (RTX 5090)**: DirectML + CUDA
 
+## 🙏 Acknowledgments
 
 
-# Install dependencies with UV- **NPU (Intel AI Boost)**: OpenVINO inference### Testing Changes
 
-uv sync
+Built with:
+
+- [UV](https://github.com/astral-sh/uv) - Fast Python package manager# Install dependencies with UV- **NPU (Intel AI Boost)**: OpenVINO inference### Testing Changes
+
+- [OpenVINO](https://github.com/openvinotoolkit/openvino) - Intel NPU support
+
+- [ONNX Runtime](https://github.com/microsoft/onnxruntime) - Multi-backend inferenceuv sync
+
+- [DirectML](https://github.com/microsoft/DirectML) - Windows GPU acceleration
 
 - **CPU**: ONNX Runtime fallback```powershell
 
+---
+
 # Or use pip
 
+**Built for performance and extensibility** 🚀
+
 pip install -r requirements.txt# Test workflow loading
+
+For questions or issues, please open an issue on GitHub.
 
 ```
 
