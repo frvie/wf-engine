@@ -127,7 +127,6 @@ This project requires **[uv](https://github.com/astral-sh/uv)** as the package m
 ---
 
 ## Models
-Download YOLO models into the folder "models":
 ```bash
 # From Ultralytics
 wget https://github.com/ultralytics/assets/releases/download/v0.0.0/yolov8s.pt -O [yolov8s.pt](http://_vscodecontentref_/2)
