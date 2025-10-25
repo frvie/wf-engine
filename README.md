@@ -8,7 +8,20 @@ High-performance, extensible workflow system for AI object detection with suppor
 
 The Workflow Engine is a flexible task orchestration system that executes complex workflows by automatically discovering, managing, and executing modular Python nodes. It intelligently handles dependency conflicts through environment isolation and supports parallel execution with dependency resolution.
 
-Originally built for multi-backend AI inference (DirectML GPU, Intel NPU, CPU), the engine is designed to be **general-purpose** and can orchestrate any type of computational workflow.## 🚀 Quick Start
+
+## 🔑 Key Design Decisions
+- Lazy Loading - Only loads nodes needed for current workflow
+- Smart Isolation - Only uses subprocess when necessary (DirectML needs it, NPU/CPU don't)
+- Parallel Waves - Executes independent nodes concurrently
+- Auto-Injection - Automatically passes dependency outputs to downstream nodes
+- Error Resilience - Continues workflow even if some nodes fail
+
+## 🎯 Performance Optimizations
+- Pre-loaded functions: Faster than dynamic import on each execution
+- Thread pool reuse: Executor created once per wave
+- In-process execution: No subprocess overhead for compatible nodes
+- Dependency caching: Results stored in self.results dictionary
+
 
 ## ✨ Main Capabilities
 
