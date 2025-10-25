@@ -2,7 +2,7 @@
 
 A high-performance, modular workflow orchestration engine for Python with automatic node discovery, environment isolation, and multi-backend inference support.
 
-
+---
 ## 🎯 What is the Workflow Engine? 
 High-performance, extensible workflow system for AI object detection with support for DirectML GPU, CUDA, NPU, and CPU backends. Features parallel execution, data session caching, and easy custom node creation.High-performance, extensible workflow system for AI object detection with support for DirectML GPU, CUDA, NPU, and CPU backends. Features parallel execution, data session caching, and easy custom node creation.
 
@@ -121,22 +121,6 @@ npu_inference(**results['load_image'])
 
 ---
 
-## 📈 Performance Metrics
-
-### Typical Execution Breakdown
-
-| Phase | Time | Percentage | Details |
-|-------|------|------------|---------|
-| **Initialization** | 0.001s | 0.02% | Load engine, environment manager |
-| **Node Discovery** | 0.010s | 0.19% | Scan and load 8 nodes |
-| **Wave 1 (Loading)** | 0.900s | 17.3% | Load models and image |
-| **Wave 2 (Inference)** | 4.200s | 80.8% | Run inference on 3 backends |
-| **Wave 3 (Stats)** | 0.003s | 0.06% | Aggregate results |
-| **Cleanup** | 0.086s | 1.65% | Finalize and log |
-| **Total** | 5.200s | 100% | End-to-end workflow |
-
-
-
 ## 🛠️ Requirements 
 This project requires **[uv](https://github.com/astral-sh/uv)** as the package manager.
 
@@ -151,8 +135,7 @@ uv sync
 uv run python function_workflow_engine.py workflows/modular_function_based_demo.json
 ```
 
-
-
+---
 
 # Workflow Engine Architecture
 
