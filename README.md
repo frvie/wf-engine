@@ -28,7 +28,7 @@ Originally built for multi-backend AI inference (DirectML GPU, Intel NPU, CPU), 
 
 This project requires **[uv](https://github.com/astral-sh/uv)** as the package manager.
 
-### Install UV# Visualize and compare detection results
+### Install UV# 
 
 **Windows (PowerShell):**# Try custom node examples
 
