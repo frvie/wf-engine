@@ -116,7 +116,7 @@ npu_inference(**results['load_image'])
 
 # How to Use
 
-##🛠️ UV as a package manager
+## 🛠️ UV as a package manager
 This project requires **[uv](https://github.com/astral-sh/uv)** as the package manager.
 
 ### Create Virtual Environment
