@@ -129,10 +129,11 @@ Download YOLO models into the folder "models":
 ```bash
 # From Ultralytics
 wget https://github.com/ultralytics/assets/releases/download/v0.0.0/yolov8s.pt -O [yolov8s.pt](http://_vscodecontentref_/2)
-
+```
 # Export to ONNX
+```bash
 yolo export model=models/yolov8s.pt format=onnx
-
+```
 ## Create Virtual Environment
 ```bash
 uv sync
