@@ -40,7 +40,7 @@ uv run python function_workflow_engine.py workflows/modular_function_based_demo.
 
 
 
-#@ Workflow Engine Architecture
+# Workflow Engine Architecture
 
 ## How the Function Workflow Engine Works
 
