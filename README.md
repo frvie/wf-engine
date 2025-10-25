@@ -20,8 +20,6 @@ Originally built for multi-backend AI inference (DirectML GPU, Intel NPU, CPU), 
 
 - 📊 **Dependency Resolution** - Builds and executes workflows based on dependency graphs
 
-- ⚡ **Multi-Backend Inference** - Included example: DirectML (137 FPS), Intel NPU (58 FPS), CPU (18 FPS)uv run python workflow_cli.py --workflow workflows/yolov8_object_detection.json```powershell
-
 - 🎨 **Declarative Workflows** - Define workflows in simple JSON format
 
 - 📦 **Automatic Dependency Management** - Installs required packages per node automatically# Run YOLOv8 detection across all backends
