@@ -9,18 +9,132 @@ High-performance, extensible workflow system for AI object detection with suppor
 The Workflow Engine is a flexible task orchestration system that executes complex workflows by automatically discovering, managing, and executing modular Python nodes. It intelligently handles dependency conflicts through environment isolation and supports parallel execution with dependency resolution.
 
 
+---
+
 ## 🔑 Key Design Decisions
-- Lazy Loading - Only loads nodes needed for current workflow
-- Smart Isolation - Only uses subprocess when necessary (DirectML needs it, NPU/CPU don't)
-- Parallel Waves - Executes independent nodes concurrently
-- Auto-Injection - Automatically passes dependency outputs to downstream nodes
-- Error Resilience - Continues workflow even if some nodes fail
+
+### 1. Lazy Loading
+**Problem:** Loading all nodes wastes memory and time  
+**Solution:** Only load nodes required by current workflow
+
+```python
+# Before: Load all 50 nodes in workflow_nodes/
+# After: Load only 8 nodes needed for this workflow
+📦 Loaded 8/8 required nodes
+```
+
+### 2. Smart Isolation
+**Problem:** Subprocess overhead slows everything down  
+**Solution:** Only use subprocess when necessary
+
+```python
+# DirectML: Needs isolation (onnxruntime-directml conflicts)
+→ Execute in subprocess (directml-env)
+
+# NPU: No conflicts with main environment
+→ Execute in-process (fastest)
+
+# CPU: No conflicts
+→ Execute in-process (fastest)
+```
+
+### 3. Parallel Waves
+**Problem:** Sequential execution wastes time  
+**Solution:** Execute independent nodes concurrently
+
+```python
+# Sequential (slow): 0.9s + 0.001s + 0.0s + 0.9s = 1.8s
+# Parallel (fast): max(0.9s, 0.001s, 0.0s, 0.9s) = 0.9s
+```
+
+### 4. Auto-Injection
+**Problem:** Manual wiring is error-prone  
+**Solution:** Automatically pass dependency outputs
+
+```python
+# No need to specify:
+{
+  "inputs": {
+    "image_path": "$load_image.image_path",
+    "image_data": "$load_image.image_data"
+  }
+}
+
+# Auto-injected from dependencies:
+inputs = {**static_inputs, **load_image_result}
+```
+
+### 5. Error Resilience
+**Problem:** One node failure shouldn't crash workflow  
+**Solution:** Continue execution, mark failed nodes
+
+```python
+try:
+    result = execute_node(node)
+except Exception as e:
+    result = {'error': str(e), 'status': 'failed'}
+    # Continue to next nodes
+```
+
+---
 
 ## 🎯 Performance Optimizations
-- Pre-loaded functions: Faster than dynamic import on each execution
-- Thread pool reuse: Executor created once per wave
-- In-process execution: No subprocess overhead for compatible nodes
-- Dependency caching: Results stored in self.results dictionary
+
+### 1. Pre-loaded Functions
+```python
+# Slow: Import on every execution
+module = importlib.import_module('workflow_nodes.cpu_inference_node')
+func = getattr(module, 'cpu_inference_node')
+
+# Fast: Pre-load once, reuse
+func = discovered_nodes['workflow_nodes.cpu_inference_node.cpu_inference_node']['function']
+```
+
+### 2. Thread Pool Reuse
+```python
+# Executor created once per wave
+with ThreadPoolExecutor(max_workers=4) as executor:
+    # Submit all nodes in wave
+    futures = {executor.submit(execute, node): node_id for node_id in ready_nodes}
+```
+
+### 3. In-Process Execution
+```python
+# Subprocess overhead: ~50-100ms startup
+# In-process: ~0ms overhead
+
+# Example: NPU inference
+In-process: 17.1ms per inference
+Subprocess: Would be 67-117ms per inference
+```
+
+### 4. Dependency Caching
+```python
+# Results stored once, reused by all dependents
+self.results['load_image'] = {"image_path": "...", "image_data": [...]}
+
+# All 3 inference nodes reuse this data
+cpu_inference(**results['load_image'])
+directml_inference(**results['load_image'])
+npu_inference(**results['load_image'])
+```
+
+---
+
+## 📈 Performance Metrics
+
+### Typical Execution Breakdown
+
+| Phase | Time | Percentage | Details |
+|-------|------|------------|---------|
+| **Initialization** | 0.001s | 0.02% | Load engine, environment manager |
+| **Node Discovery** | 0.010s | 0.19% | Scan and load 8 nodes |
+| **Wave 1 (Loading)** | 0.900s | 17.3% | Load models and image |
+| **Wave 2 (Inference)** | 4.200s | 80.8% | Run inference on 3 backends |
+| **Wave 3 (Stats)** | 0.003s | 0.06% | Aggregate results |
+| **Cleanup** | 0.086s | 1.65% | Finalize and log |
+| **Total** | 5.200s | 100% | End-to-end workflow |
+
 
 
 ## 🛠️ Requirements 
@@ -452,131 +566,7 @@ Time 5.2s → Workflow Complete
 19:57:27 | workflow.engine | INFO | 🎯 Workflow completed successfully: 8/8 nodes executed
 ```
 
----
 
-## 🔑 Key Design Decisions
-
-### 1. Lazy Loading
-**Problem:** Loading all nodes wastes memory and time  
-**Solution:** Only load nodes required by current workflow
-
-```python
-# Before: Load all 50 nodes in workflow_nodes/
-# After: Load only 8 nodes needed for this workflow
-📦 Loaded 8/8 required nodes
-```
-
-### 2. Smart Isolation
-**Problem:** Subprocess overhead slows everything down  
-**Solution:** Only use subprocess when necessary
-
-```python
-# DirectML: Needs isolation (onnxruntime-directml conflicts)
-→ Execute in subprocess (directml-env)
-
-# NPU: No conflicts with main environment
-→ Execute in-process (fastest)
-
-# CPU: No conflicts
-→ Execute in-process (fastest)
-```
-
-### 3. Parallel Waves
-**Problem:** Sequential execution wastes time  
-**Solution:** Execute independent nodes concurrently
-
-```python
-# Sequential (slow): 0.9s + 0.001s + 0.0s + 0.9s = 1.8s
-# Parallel (fast): max(0.9s, 0.001s, 0.0s, 0.9s) = 0.9s
-```
-
-### 4. Auto-Injection
-**Problem:** Manual wiring is error-prone  
-**Solution:** Automatically pass dependency outputs
-
-```python
-# No need to specify:
-{
-  "inputs": {
-    "image_path": "$load_image.image_path",
-    "image_data": "$load_image.image_data"
-  }
-}
-
-# Auto-injected from dependencies:
-inputs = {**static_inputs, **load_image_result}
-```
-
-### 5. Error Resilience
-**Problem:** One node failure shouldn't crash workflow  
-**Solution:** Continue execution, mark failed nodes
-
-```python
-try:
-    result = execute_node(node)
-except Exception as e:
-    result = {'error': str(e), 'status': 'failed'}
-    # Continue to next nodes
-```
-
----
-
-## 🎯 Performance Optimizations
-
-### 1. Pre-loaded Functions
-```python
-# Slow: Import on every execution
-module = importlib.import_module('workflow_nodes.cpu_inference_node')
-func = getattr(module, 'cpu_inference_node')
-
-# Fast: Pre-load once, reuse
-func = discovered_nodes['workflow_nodes.cpu_inference_node.cpu_inference_node']['function']
-```
-
-### 2. Thread Pool Reuse
-```python
-# Executor created once per wave
-with ThreadPoolExecutor(max_workers=4) as executor:
-    # Submit all nodes in wave
-    futures = {executor.submit(execute, node): node_id for node_id in ready_nodes}
-```
-
-### 3. In-Process Execution
-```python
-# Subprocess overhead: ~50-100ms startup
-# In-process: ~0ms overhead
-
-# Example: NPU inference
-In-process: 17.1ms per inference
-Subprocess: Would be 67-117ms per inference
-```
-
-### 4. Dependency Caching
-```python
-# Results stored once, reused by all dependents
-self.results['load_image'] = {"image_path": "...", "image_data": [...]}
-
-# All 3 inference nodes reuse this data
-cpu_inference(**results['load_image'])
-directml_inference(**results['load_image'])
-npu_inference(**results['load_image'])
-```
-
----
-
-## 📈 Performance Metrics
-
-### Typical Execution Breakdown
-
-| Phase | Time | Percentage | Details |
-|-------|------|------------|---------|
-| **Initialization** | 0.001s | 0.02% | Load engine, environment manager |
-| **Node Discovery** | 0.010s | 0.19% | Scan and load 8 nodes |
-| **Wave 1 (Loading)** | 0.900s | 17.3% | Load models and image |
-| **Wave 2 (Inference)** | 4.200s | 80.8% | Run inference on 3 backends |
-| **Wave 3 (Stats)** | 0.003s | 0.06% | Aggregate results |
-| **Cleanup** | 0.086s | 1.65% | Finalize and log |
-| **Total** | 5.200s | 100% | End-to-end workflow |
 
 ### Scalability
 
