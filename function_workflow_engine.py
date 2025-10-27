@@ -138,14 +138,18 @@ class FunctionWorkflowEngine:
         """Prepare node inputs by merging static inputs with dependency results"""
         inputs = node.get('inputs', {}).copy()
         
-        # Auto-inject dependency results
+        # ONLY auto-inject model_info (common pattern for model loaders → inference nodes)
+        # Everything else must be explicitly referenced with $
+        AUTO_INJECT_KEYS = {'model_info'}
+        
+        # Auto-inject only specific keys from dependency results
         for dep_id in node.get('depends_on', []):
             if dep_id in self.results:
                 dep_result = self.results[dep_id]
-                # Merge dependency result into inputs
+                # Only merge specific expected keys
                 if isinstance(dep_result, dict):
                     for key, value in dep_result.items():
-                        if key not in inputs and not key.startswith('_'):
+                        if key in AUTO_INJECT_KEYS and key not in inputs:
                             inputs[key] = value
         
         # Resolve $ references
@@ -239,7 +243,7 @@ class FunctionWorkflowEngine:
             func = getattr(module, func_name)
             
             # Call function with prepared inputs
-            result = func(inputs)
+            result = func(**inputs)  # Unpack inputs as keyword arguments
             return result
             
         except Exception as e:
@@ -248,15 +252,37 @@ class FunctionWorkflowEngine:
     
     def _execute_in_environment(self, function_name: str, inputs: Dict,
                                env_info: Dict, node_id: str) -> Dict:
-        """Execute function in isolated environment using subprocess"""
+        """Execute function in isolated environment using subprocess with shared memory"""
         import subprocess
         import tempfile
         import json
+        import time
+        from utilities.shared_memory_utils import (
+            dict_to_shared_memory_with_header,
+            cleanup_shared_memory,
+            create_shared_memory_with_header
+        )
         
         module_name, func_name = function_name.rsplit('.', 1)
         python_exe = env_info['python_executable']
         
-        # Create simple execution script that imports and calls the function
+        # Create unique shared memory names
+        timestamp = int(time.time() * 1000000)  # microseconds for uniqueness
+        shm_input_name = f"wf_input_{node_id}_{timestamp}"
+        shm_output_name = f"wf_output_{node_id}_{timestamp}"
+        
+        # WORKFLOW ENGINE: Create and populate input shared memory with FLAG_READY
+        # dict_to_shared_memory_with_header already handles pickling!
+        shm_inputs, metadata_inputs = dict_to_shared_memory_with_header(inputs, shm_input_name)
+        self.logger.debug(f"[{node_id}] Created input shared memory '{shm_input_name}' with FLAG_READY")
+        
+        # WORKFLOW ENGINE: Pre-create output shared memory (parent owns it)
+        # Allocate 10MB for output data
+        output_data_size = 10 * 1024 * 1024  # 10MB
+        shm_outputs, output_buf = create_shared_memory_with_header(shm_output_name, output_data_size)
+        self.logger.debug(f"[{node_id}] Pre-created output shared memory '{shm_output_name}' (10MB)")
+        
+        # Create execution script that uses shared memory
         script_content = f'''
 import sys
 import os
@@ -266,18 +292,64 @@ import json
 sys.path.insert(0, r"{os.getcwd()}")
 
 try:
+    from utilities.shared_memory_utils import (
+        dict_from_shared_memory_with_header,
+        attach_shared_memory_with_header,
+        set_flag,
+        FLAG_READY
+    )
+    import pickle
     from {module_name} import {func_name}
     
-    # Read inputs
-    with open("inputs.json", "r") as f:
-        inputs = json.load(f)
+    # Read metadata (contains shared memory names and sizes)
+    with open("metadata.json", "r") as f:
+        metadata = json.load(f)
     
-    # Execute function
-    result = {func_name}(inputs)
+    # SUBPROCESS: Read inputs from shared memory (waits for FLAG_READY automatically)
+    shm_in, inputs = dict_from_shared_memory_with_header(
+        metadata["input"],
+        wait_for_ready=True,
+        timeout=30.0
+    )
     
-    # Write result
-    with open("result.json", "w") as f:
-        json.dump(result, f)
+    # Execute function with unpacked inputs
+    result = {func_name}(**inputs)
+    
+    # SUBPROCESS: Attach to output shared memory (parent pre-created it)
+    shm_out, output_buf = attach_shared_memory_with_header(metadata["output"]["shm_name"])
+    
+    # Pickle and write result to output shared memory
+    result_bytes = pickle.dumps(result)
+    result_size = len(result_bytes)
+    
+    if result_size > len(output_buf):
+        raise ValueError(f"Result too large: {{result_size}} bytes > {{len(output_buf)}} bytes")
+    
+    output_buf[:result_size] = result_bytes
+    
+    # SUBPROCESS: Set FLAG_READY to signal parent
+    set_flag(shm_out.buf, FLAG_READY)
+    
+    # Write result size for parent
+    with open("result_size.txt", "w") as f:
+        f.write(str(result_size))
+    
+    # SUBPROCESS: Clean up - release buffer references first
+    del output_buf  # Release memoryview reference
+    del result_bytes  # Release bytes reference
+    
+    # Write success marker first (before cleanup that might fail)
+    with open("success.txt", "w") as f:
+        f.write("OK")
+    
+    # Now close shared memories (parent still owns them)
+    # Wrap in try/except to handle buffer reference issues gracefully
+    try:
+        shm_in.close()
+        shm_out.close()
+    except BufferError:
+        # Buffer still has references - cleanup will happen via garbage collection
+        pass
         
 except Exception as e:
     import traceback
@@ -291,18 +363,25 @@ except Exception as e:
             # Create temporary directory for communication
             with tempfile.TemporaryDirectory() as temp_dir:
                 script_path = os.path.join(temp_dir, "execute.py")
-                inputs_path = os.path.join(temp_dir, "inputs.json")
-                result_path = os.path.join(temp_dir, "result.json")
+                metadata_path = os.path.join(temp_dir, "metadata.json")
+                result_size_path = os.path.join(temp_dir, "result_size.txt")
+                success_path = os.path.join(temp_dir, "success.txt")
                 error_path = os.path.join(temp_dir, "error.txt")
                 
-                # Write script and inputs
+                # Write script
                 with open(script_path, 'w') as f:
                     f.write(script_content)
                 
-                with open(inputs_path, 'w') as f:
-                    json.dump(inputs, f)
+                # Write metadata (contains shared memory names and data sizes)
+                metadata = {
+                    "input": metadata_inputs,
+                    "output": {"shm_name": shm_output_name}
+                }
+                with open(metadata_path, 'w') as f:
+                    json.dump(metadata, f)
                 
-                # Execute in isolated environment
+                # WORKFLOW ENGINE: Launch subprocess (inputs already FLAG_READY)
+                self.logger.debug(f"[{node_id}] Launching subprocess...")
                 result = subprocess.run(
                     [str(python_exe), script_path],
                     cwd=temp_dir,
@@ -310,7 +389,7 @@ except Exception as e:
                     text=True, 
                     timeout=300,
                     encoding='utf-8',
-                    errors='replace'  # Replace invalid characters instead of failing
+                    errors='replace'
                 )
                 
                 # Log subprocess output for debugging
@@ -319,10 +398,57 @@ except Exception as e:
                         if line.strip():
                             self.logger.info(f"[{node_id}] {line}")
                 
-                if result.returncode == 0 and os.path.exists(result_path):
-                    # Read result
-                    with open(result_path, 'r') as f:
-                        return json.load(f)
+                if result.returncode == 0 and os.path.exists(success_path):
+                    # WORKFLOW ENGINE: Wait for subprocess to set FLAG_READY on output
+                    from utilities.shared_memory_utils import wait_for_flag, FLAG_READY
+                    import pickle
+                    
+                    self.logger.debug(f"[{node_id}] Waiting for FLAG_READY on output...")
+                    if not wait_for_flag(shm_outputs.buf, FLAG_READY, timeout=30.0):
+                        raise TimeoutError("Subprocess did not complete within timeout")
+                    
+                    # Read result size
+                    with open(result_size_path, 'r') as f:
+                        result_size = int(f.read().strip())
+                    
+                    # WORKFLOW ENGINE: Read result from output shared memory
+                    # CRITICAL: Copy bytes completely before ANY cleanup
+                    output_buf_data = shm_outputs.buf[8:]  # Skip header  
+                    result_bytes = bytes(output_buf_data[:result_size])  # Full copy
+                    del output_buf_data  # Release memoryview reference
+                    
+                    # Unpickle immediately (before cleanup) to ensure data integrity
+                    output_data = pickle.loads(result_bytes)
+                    del result_bytes  # Release bytes reference
+                    
+                    # Force deep copy of numpy arrays if present
+                    if isinstance(output_data, dict):
+                        import numpy as np
+                        output_data_copy = {}
+                        for key, value in output_data.items():
+                            if isinstance(value, np.ndarray):
+                                output_data_copy[key] = value.copy()  # Force numpy copy
+                            else:
+                                output_data_copy[key] = value
+                        del output_data
+                    else:
+                        output_data_copy = output_data
+                    
+                    # WORKFLOW ENGINE: Cleanup shared memory (parent controls lifecycle)
+                    # Use try/except to handle buffer reference issues gracefully
+                    try:
+                        shm_inputs.close()
+                        shm_outputs.close()
+                        cleanup_shared_memory(shm_input_name)
+                        cleanup_shared_memory(shm_output_name)
+                    except BufferError:
+                        # Buffer still has references - cleanup will happen via garbage collection
+                        self.logger.debug(f"[{node_id}] Delayed shared memory cleanup (buffer references exist)")
+                        pass
+                    
+                    self.logger.debug(f"[{node_id}] Successfully read result from shared memory")
+                    
+                    return output_data_copy
                 else:
                     # Read error
                     error_msg = "Unknown error"
@@ -332,10 +458,21 @@ except Exception as e:
                     elif result.stderr:
                         error_msg = result.stderr
                     
+                    # WORKFLOW ENGINE: Cleanup on error
+                    shm_inputs.close()
+                    cleanup_shared_memory(shm_input_name)
+                    cleanup_shared_memory(shm_output_name)
+                    
                     raise RuntimeError(f"Process failed: {error_msg}")
                     
         except Exception as e:
             self.logger.error(f"Environment execution failed: {e}")
+            # WORKFLOW ENGINE: Ensure cleanup on exception
+            try:
+                cleanup_shared_memory(shm_input_name)
+                cleanup_shared_memory(shm_output_name)
+            except Exception:
+                pass
             raise
                 
         return {'error': 'Execution failed', 'status': 'failed'}
@@ -420,8 +557,16 @@ if __name__ == "__main__":
     
     # Log workflow completion summary
     logger = logging.getLogger('workflow.engine')
-    successful_nodes = sum(1 for result in results.values() if result.get('status', 'success') == 'success')
+    # Consider nodes successful if they don't have status='failed' or an error
+    successful_nodes = sum(1 for result in results.values() 
+                          if result.get('status') != 'failed' and 'error' not in result)
     failed_nodes = len(results) - successful_nodes
+    
+    # Debug: Show which nodes are considered failed
+    if failed_nodes > 0:
+        for node_id, result in results.items():
+            if result.get('status') == 'failed' or 'error' in result:
+                logger.info(f"Node '{node_id}' marked as failed - status: {result.get('status')}, error: {result.get('error')}")
     
     if failed_nodes == 0:
         logger.info(f"Workflow completed successfully: {successful_nodes}/{len(results)} nodes executed")

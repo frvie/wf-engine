@@ -9,6 +9,13 @@
   
   "nodes": [
     {
+      "id": "detect_gpus",
+      "function": "workflow_nodes.detect_gpus_node.detect_gpus_node",
+      "depends_on": [],
+      "inputs": {}
+    },
+    
+    {
       "id": "download_model",
       "function": "workflow_nodes.download_model_node.download_model_node",
       "depends_on": [],
@@ -31,7 +38,7 @@
     {
       "id": "directml_model",
       "function": "workflow_nodes.load_directml_model_node.load_directml_model_node",
-      "depends_on": ["download_model"],
+      "depends_on": ["download_model", "detect_gpus"],
       "inputs": {
         "model_path": "models/yolov8s.onnx",
         "device_id": 0
@@ -60,10 +67,11 @@
     {
       "id": "directml_inference",
       "function": "workflow_nodes.directml_inference_node.directml_inference_node",
-      "depends_on": ["load_image", "directml_model"],
+      "depends_on": ["load_image", "directml_model", "detect_gpus"],
       "inputs": {
         "confidence_threshold": 0.25,
-        "iterations": 50
+        "iterations": 50,
+        "gpu_info": "$detect_gpus"
       }
     },
     
