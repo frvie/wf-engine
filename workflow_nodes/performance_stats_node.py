@@ -43,20 +43,23 @@ def performance_stats_node(directml_result: Optional[Dict] = None,
         
         # Calculate performance ratios and log results
         if results:
-            fastest_time = results[0]["avg_inference_time_ms"]
+            # Find CPU baseline for speedup calculations
+            cpu_result = next((r for r in results if "CPU" in r["backend"]), None)
+            baseline_time = cpu_result["avg_inference_time_ms"] if cpu_result else results[0]["avg_inference_time_ms"]
+            
             logger = logging.getLogger('workflow.performance')
-            logger.info(f"📊 Performance Comparison ({len(results)} backends tested):")
+            logger.info(f"📊 Performance Comparison ({len(results)} backends tested, baseline: CPU):")
             
             for i, result in enumerate(results):
                 result["performance_ratio"] = (result["avg_inference_time_ms"] / 
-                                             fastest_time)
-                result["speedup"] = (f"{fastest_time / result['avg_inference_time_ms']:.2f}x")
+                                             baseline_time)
+                result["speedup"] = (f"{baseline_time / result['avg_inference_time_ms']:.2f}x")
                 fps = (1000.0 / result["avg_inference_time_ms"] 
                       if result["avg_inference_time_ms"] > 0 else 0)
                 result["fps"] = fps  # Store FPS in result dict
                 
-                rank_map = {0: "🥇", 1: "🥈", 2: "🥉"}
-                rank = rank_map.get(i, f"{i+1}.")
+                rank_map = {0: "1st", 1: "2nd", 2: "3rd"}
+                rank = rank_map.get(i, f"{i+1}th")
                 logger.info(
                     f"  {rank} {result['backend']}: "
                     f"{result['avg_inference_time_ms']:.1f}ms "
@@ -64,7 +67,7 @@ def performance_stats_node(directml_result: Optional[Dict] = None,
                 )
             
             # Display top detections from each backend
-            logger.info("\n🎯 Detection Results:")
+            logger.info("\nDetection Results:")
             for result in results:
                 detections = result.get("detections", [])
                 if detections:

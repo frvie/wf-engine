@@ -9,6 +9,16 @@
   
   "nodes": [
     {
+      "id": "download_model",
+      "function": "workflow_nodes.download_model_node.download_model_node",
+      "depends_on": [],
+      "inputs": {
+        "model_name": "yolov8s.onnx",
+        "models_dir": "models"
+      }
+    },
+    
+    {
       "id": "load_image",
       "function": "workflow_nodes.load_image_node.load_image_node",
       "depends_on": [],
@@ -21,7 +31,7 @@
     {
       "id": "directml_model",
       "function": "workflow_nodes.load_directml_model_node.load_directml_model_node",
-      "depends_on": [],
+      "depends_on": ["download_model"],
       "inputs": {
         "model_path": "models/yolov8s.onnx",
         "device_id": 0
@@ -31,7 +41,7 @@
     {
       "id": "cpu_model", 
       "function": "workflow_nodes.load_cpu_model_node.load_cpu_model_node",
-      "depends_on": [],
+      "depends_on": ["download_model"],
       "inputs": {
         "model_path": "models/yolov8s.onnx"
       }
@@ -40,7 +50,7 @@
     {
       "id": "npu_model",
       "function": "workflow_nodes.load_openvino_model_node.load_openvino_model_node",
-      "depends_on": [],
+      "depends_on": ["download_model"],
       "inputs": {
         "model_path": "models/yolov8s.onnx",
         "device": "NPU"

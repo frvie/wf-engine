@@ -29,9 +29,14 @@ class SimpleOnnxEngine:
         self.logger = logging.getLogger('inference.onnx')
         
         try:
+            # Enable graph optimizations for DirectML
+            sess_options = ort.SessionOptions()
+            sess_options.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
+            
             # Create ONNX Runtime session
             self.session = ort.InferenceSession(
                 model_path,
+                sess_options=sess_options,
                 providers=providers
             )
             

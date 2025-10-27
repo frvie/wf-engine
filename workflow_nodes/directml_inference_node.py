@@ -13,9 +13,8 @@ from workflow_decorator import workflow_node
 
 
 @workflow_node("directml_inference",
-               dependencies=["onnxruntime-directml"],
-               isolation_mode="auto",
-               environment="directml-env")
+               dependencies=["onnxruntime-directml", "numpy", "opencv-python", "Pillow"],
+               isolation_mode="subprocess")
 def directml_inference_node(model_session: str = None, 
                            model_info: Dict = None, 
                            confidence_threshold: float = 0.25,
@@ -39,11 +38,17 @@ def directml_inference_node(model_session: str = None,
             if not os.path.isabs(model_path):
                 model_path = os.path.abspath(model_path)
         
-        # Create DirectML inference engine
+        # Create DirectML inference engine with device_id=1 (RTX 5090)
         engine = SimpleOnnxEngine(
             model_path=model_path,
-            providers=['DmlExecutionProvider', 'CPUExecutionProvider']
+            providers=[('DmlExecutionProvider', {'device_id': 1}), 'CPUExecutionProvider']
         )
+        
+        # Log which provider is actually being used
+        logger = logging.getLogger('workflow.inference.directml')
+        if hasattr(engine, 'session') and hasattr(engine.session, 'get_providers'):
+            actual_providers = engine.session.get_providers()
+            logger.info(f"DirectML using providers: {actual_providers}")
         
         # Get image path from global cache (set by load_image_node)
         test_image = _IMAGE_CACHE.get('image_path')
@@ -72,6 +77,10 @@ def directml_inference_node(model_session: str = None,
         
         # Preprocess image
         image_tensor, orig_w, orig_h = engine.preprocess_image(test_image)
+        
+        # Warmup run (DirectML needs this for JIT compilation)
+        logger.info("Running warmup iteration...")
+        _ = engine.session.run(None, {engine.input_name: image_tensor})
         
         # Run inference iterations
         start_time = time.perf_counter()
@@ -103,8 +112,8 @@ def directml_inference_node(model_session: str = None,
         
         # Log performance and results
         logger = logging.getLogger('workflow.inference.directml')
-        logger.info(f"🎯 Detected {len(formatted_detections)} objects using {engine.provider}")
-        logger.info(f"⚡ Performance: {avg_inference_time:.1f}ms avg, {fps:.1f} FPS ({iterations} iterations)")
+        logger.info(f"Detected {len(formatted_detections)} objects using {engine.provider}")
+        logger.info(f"Performance: {avg_inference_time:.1f}ms avg, {fps:.1f} FPS ({iterations} iterations)")
         
         # Also print to stdout for subprocess visibility
         print(f"DirectML: Detected {len(formatted_detections)} objects")

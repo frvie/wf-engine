@@ -1,7 +1,7 @@
 """
-Minimal Function-Based Workflow Orchestrator
+Function-Based Workflow Orchestrator
 
-A lightweight orchestrator for function-based workflow nodes using the unified decorator.
+A lightweight orchestrator for function-based workflow nodes using a workflow decorator.
 Supports parallel execution, dependency resolution, and automatic conflict isolation.
 """
 
@@ -48,14 +48,19 @@ class FunctionWorkflowEngine:
             env_config = self.workflow_config.get('environments', {})
             env_file = env_config.get('file', 'environments.json')
             
+            # environments.json is now OPTIONAL - only load if it exists
             if os.path.exists(env_file):
-                self.logger.info(f"📦 Loading environments from: {env_file}")
+                self.logger.info(f"Loading environments from: {env_file}")
                 self.environment_manager = WorkflowEnvironmentManager(
                     environments_file=Path(env_file)
                 )
-                self.logger.info("📦 Environment manager initialized")
             else:
-                self.logger.debug(f"No environment file found: {env_file}")
+                # Create environment manager without external file
+                # It will auto-generate environments from node dependencies
+                self.logger.debug("No environments.json - using auto-generated environments")
+                self.environment_manager = WorkflowEnvironmentManager()
+                
+            self.logger.info("Environment manager initialized")
                 
         except Exception as e:
             self.logger.warning(f"Environment manager not available: {e}")
@@ -72,7 +77,7 @@ class FunctionWorkflowEngine:
             if function_name:
                 required_functions.add(function_name)
         
-        self.logger.info(f"🔍 Discovering nodes for {len(required_functions)} functions...")
+        self.logger.info(f"Discovering nodes for {len(required_functions)} functions...")
         
         # Discover available nodes in workflow_nodes/
         nodes_dir = Path("workflow_nodes")
@@ -110,18 +115,14 @@ class FunctionWorkflowEngine:
                                 'node_info': obj._workflow_node_info
                             }
                             loaded_count += 1
-                            self.logger.debug(f"✅ Loaded: {name} from {py_file.name}")
+                            self.logger.debug(f"Loaded: {name} from {py_file.name}")
                         
             except Exception as e:
                 self.logger.warning(f"Failed to load {py_file.name}: {e}")
         
-        self.logger.info(f"📦 Loaded {loaded_count}/{len(required_functions)} required nodes")
+        self.logger.info(f"Loaded {loaded_count}/{len(required_functions)} required nodes")
         
-        # Log any missing nodes
-        missing_nodes = required_functions - set(discovered_nodes.keys())
-        if missing_nodes:
-            self.logger.warning(f"❌ Missing nodes: {list(missing_nodes)}")
-        
+        # Store discovered nodes for later use
         self.discovered_nodes = discovered_nodes
     
     def _get_ready_nodes(self, dependency_graph: Dict, completed: set) -> List[str]:
@@ -180,15 +181,44 @@ class FunctionWorkflowEngine:
             # Create a fake node_type from function name for environment lookup
             node_type = function_name.split('.')[-1].replace('_node', '_node')
             
+            # Extract node metadata from decorator (if function is already loaded)
+            node_metadata = None
+            func = None
+            
+            # Try to get function from discovered_nodes first
+            if hasattr(self, 'discovered_nodes') and function_name in self.discovered_nodes:
+                func = self.discovered_nodes[function_name]['function']
+            else:
+                # Function not discovered - try to import it to get metadata
+                try:
+                    module_name, func_name = function_name.rsplit('.', 1)
+                    import importlib
+                    module = importlib.import_module(module_name)
+                    func = getattr(module, func_name)
+                except Exception as e:
+                    self.logger.debug(f"Could not import {function_name} for metadata: {e}")
+            
+            # Extract metadata if we have the function
+            if func and (hasattr(func, 'dependencies') or hasattr(func, 'environment') or hasattr(func, 'isolation_mode')):
+                node_metadata = {
+                    'dependencies': getattr(func, 'dependencies', []),
+                    'environment': getattr(func, 'environment', None),
+                    'isolation_mode': getattr(func, 'isolation_mode', 'auto')
+                }
+            
             env_info = self.environment_manager.get_environment_for_node(
                 node_type=node_type,
                 node_config=node,
-                workflow_config=self.workflow_config
+                workflow_config=self.workflow_config,
+                node_metadata=node_metadata  # Pass decorator metadata
             )
+            
+            # Debug log for environment info
+            self.logger.debug(f"{node['id']}: env_info={env_info}")
             
             # If environment is isolated, execute in that environment
             if env_info and env_info.get('is_isolated'):
-                self.logger.info(f"🔧 Executing {node['id']} in {env_info['env_name']}")
+                self.logger.info(f"Executing {node['id']} in {env_info['env_name']}")
                 
                 try:
                     result = self._execute_in_environment(
@@ -283,6 +313,12 @@ except Exception as e:
                     errors='replace'  # Replace invalid characters instead of failing
                 )
                 
+                # Log subprocess output for debugging
+                if result.stdout:
+                    for line in result.stdout.strip().split('\n'):
+                        if line.strip():
+                            self.logger.info(f"[{node_id}] {line}")
+                
                 if result.returncode == 0 and os.path.exists(result_path):
                     # Read result
                     with open(result_path, 'r') as f:
@@ -310,7 +346,7 @@ except Exception as e:
             return {}
         
         workflow_name = self.workflow_config.get('name', 'Function Workflow')
-        self.logger.info(f"🚀 Starting {workflow_name} ({len(self.nodes)} nodes)")
+        self.logger.info(f"Starting {workflow_name} ({len(self.nodes)} nodes)")
         
         start_time = time.time()
         
@@ -333,7 +369,7 @@ except Exception as e:
                 self.logger.error(f"Workflow blocked. Remaining: {remaining}")
                 break
             
-            self.logger.info(f"⚡ Executing {len(ready_nodes)} nodes...")
+            self.logger.info(f"Executing {len(ready_nodes)} nodes...")
             
             # Execute ready nodes in parallel
             with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
@@ -349,16 +385,16 @@ except Exception as e:
                         self.results[node_id] = result
                         completed.add(node_id)
                         
-                        status = "✅" if not result.get('error') else "❌"
-                        self.logger.info(f"{status} {node_id}: completed")
+                        status = "COMPLETED" if not result.get('error') else "FAILED"
+                        self.logger.info(f"{status}: {node_id}")
                         
                     except Exception as e:
-                        self.logger.error(f"❌ {node_id}: {e}")
+                        self.logger.error(f"FAILED: {node_id}: {e}")
                         completed.add(node_id)
                         self.results[node_id] = {'error': str(e), 'status': 'failed'}
         
         total_time = time.time() - start_time
-        self.logger.info(f"✅ Workflow completed in {total_time:.2f}s")
+        self.logger.info(f"Workflow completed in {total_time:.2f}s")
         
         return self.results
 
@@ -388,9 +424,9 @@ if __name__ == "__main__":
     failed_nodes = len(results) - successful_nodes
     
     if failed_nodes == 0:
-        logger.info(f"🎯 Workflow completed successfully: {successful_nodes}/{len(results)} nodes executed")
+        logger.info(f"Workflow completed successfully: {successful_nodes}/{len(results)} nodes executed")
     else:
-        logger.warning(f"⚠️ Workflow completed with issues: {successful_nodes}/{len(results)} nodes successful, {failed_nodes} failed")
+        logger.warning(f"Workflow completed with issues: {successful_nodes}/{len(results)} nodes successful, {failed_nodes} failed")
     
     # Log individual node timings in a compact format
     node_timings = []

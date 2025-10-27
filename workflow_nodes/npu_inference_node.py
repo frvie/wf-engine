@@ -13,7 +13,7 @@ from workflow_decorator import workflow_node
 
 
 @workflow_node("npu_inference",
-               dependencies=["openvino"],
+               dependencies=["openvino", "numpy", "opencv-python", "Pillow"],
                isolation_mode="none")
 def npu_inference_node(model_session: str = None, 
                        model_info: Dict = None, 
@@ -175,8 +175,8 @@ def npu_inference_node(model_session: str = None,
             })
         
         # Log performance and results
-        logger.info(f"🎯 Detected {len(formatted_detections)} objects using {ov_device}")
-        logger.info(f"⚡ Performance: {avg_inference_time:.1f}ms avg, "
+        logger.info(f"Detected {len(formatted_detections)} objects using {ov_device}")
+        logger.info(f"Performance: {avg_inference_time:.1f}ms avg, "
                    f"{fps:.1f} FPS ({iterations} iterations)")
         if formatted_detections:
             top_detections = sorted(formatted_detections,

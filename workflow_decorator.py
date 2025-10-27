@@ -213,7 +213,7 @@ def workflow_node(
     node_id: str,
     dependencies: Optional[List[str]] = None,
     cache_models: bool = True,
-    isolation_mode: str = "auto",  # "auto", "always", "never"
+    isolation_mode: str = "auto",  # "auto", "always", "never", "in_process", "none"
     environment: Optional[str] = None,
     performance_tracking: bool = True,
     log_level: str = "INFO"  # Control logging verbosity
@@ -221,23 +221,30 @@ def workflow_node(
     """
     Universal workflow node decorator with hybrid execution capabilities
     
+    Environment auto-generation:
+    - If dependencies are specified and isolation is needed, environment is auto-created
+    - No need for external environments.json file
+    - Environment name is auto-generated from dependencies
+    
     Args:
         node_id: Unique identifier for this node
-        dependencies: List of required Python packages
+        dependencies: List of required Python packages (auto-creates environment if needed)
         cache_models: Whether to enable global model caching
-        isolation_mode: Execution isolation mode ("auto", "always", "never")
-        environment: Target environment for isolated execution
+        isolation_mode: Execution isolation mode:
+            - "auto": Auto-detect conflicts, isolate if needed
+            - "always"/"isolated": Always run in isolated environment
+            - "never"/"in_process"/"none": Always run in main process
+        environment: Explicit environment name (optional, auto-generated if not specified)
         performance_tracking: Enable timing and performance metrics
         log_level: Logging verbosity level
         
     Example:
-        @workflow_node(node_id="image_loader", dependencies=["opencv-python"])
-        def load_image(image_path: str, resize: bool = True) -> Dict[str, Any]:
-            import cv2
-            img = cv2.imread(image_path)
-            if resize:
-                img = cv2.resize(img, (640, 640))
-            return {"image": img, "status": "success"}
+        @workflow_node(node_id="directml_inference", 
+                      dependencies=["onnxruntime-directml", "numpy"])
+        def my_node(image: np.ndarray) -> Dict[str, Any]:
+            # Environment auto-created with specified dependencies
+            import onnxruntime as ort
+            return {"result": "success"}
     """
     def decorator(func: Callable) -> Callable:
         # Get function signature for parameter filtering
@@ -251,7 +258,7 @@ def workflow_node(
             
             # Log node execution start
             if log_level in ["DEBUG", "INFO"]:
-                logger.info(f"🚀 Starting {node_id}")
+                logger.info(f"Starting {node_id}")
                 if log_level == "DEBUG":
                     logger.debug(f"Input args: {len(args)} positional, "
                                f"{len(kwargs)} keyword arguments")
@@ -328,7 +335,7 @@ def workflow_node(
                         if log_level == "DEBUG":
                             logger.debug(f"📊 Performance: {execution_time*1000:.1f}ms")
                     else:
-                        logger.info(f"✅ {node_id} completed successfully")
+                        logger.info(f"{node_id} completed successfully")
                 
                 return result
                 

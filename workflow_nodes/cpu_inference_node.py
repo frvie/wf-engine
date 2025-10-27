@@ -87,8 +87,8 @@ def cpu_inference_node(model_session: str = None,
         
         # Log performance and results
         logger = logging.getLogger('workflow.inference.cpu')
-        logger.info(f"🎯 Detected {len(formatted_detections)} objects using {engine.provider}")
-        logger.info(f"⚡ Performance: {avg_inference_time:.1f}ms avg, {fps:.1f} FPS ({iterations} iterations)")
+        logger.info(f"Detected {len(formatted_detections)} objects using {engine.provider}")
+        logger.info(f"Performance: {avg_inference_time:.1f}ms avg, {fps:.1f} FPS ({iterations} iterations)")
         if formatted_detections:
             # Log top 3 detections
             top_detections = sorted(formatted_detections,

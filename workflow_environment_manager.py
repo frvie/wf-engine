@@ -39,12 +39,12 @@ class WorkflowEnvironmentManager:
         
         Architecture:
         - workflow_engine: Platform environment for base nodes (default)
-        - User environments: Custom environments for user-defined nodes
+        - User environments: Auto-created from node dependencies
         
         Args:
             engine_env: Path to platform's virtual environment (default: current)
             environments_dir: Directory to store user environments
-            environments_file: Path to external environments definition file
+            environments_file: Path to external environments definition file (OPTIONAL, legacy support)
         """
         self.logger = logging.getLogger('workflow.env_manager')
         
@@ -59,18 +59,17 @@ class WorkflowEnvironmentManager:
         # Cache of environment info
         self._env_cache: Dict[str, Dict[str, Any]] = {}
         
-        # Load external environments file if provided
+        # Load external environments file if provided (OPTIONAL - for backward compatibility)
         self._external_envs: Dict[str, Any] = {}
         self._external_mappings: Dict[str, str] = {}
-        if environments_file:
+        if environments_file and Path(environments_file).exists():
             self._load_environments_file(environments_file)
+            self.logger.info(
+                f"   Loaded external definitions: {len(self._external_envs)} environments")
         
-        self.logger.info("📦 Environment Manager initialized")
+        self.logger.info("Environment Manager initialized")
         self.logger.info(f"   Platform env (workflow_engine): {self.engine_env}")
         self.logger.info(f"   User environments: {self.environments_dir}")
-        if self._external_envs:
-            self.logger.info(
-                f"   Loaded definitions: {len(self._external_envs)} environments")
     
     def _load_environments_file(self, env_file: Path):
         """Load environment definitions from external file"""
@@ -99,20 +98,27 @@ class WorkflowEnvironmentManager:
     def get_environment_for_node(self,
                                  node_type: str,
                                  node_config: Dict[str, Any],
-                                 workflow_config: Optional[Dict[str, Any]] = None
+                                 workflow_config: Optional[Dict[str, Any]] = None,
+                                 node_metadata: Optional[Dict[str, Any]] = None
                                  ) -> Dict[str, Any]:
         """
         Get environment configuration for a specific node
         
         Resolution order:
-        1. Node-level 'environment' field (explicit override)
-        2. Workflow 'node_mappings' (workflow-specific)
-        3. External 'node_type_mappings' (shared definitions)
-        4. Platform environment 'workflow_engine' (DEFAULT for all base nodes)
+        1. Node decorator metadata (dependencies + environment from @workflow_node)
+        2. Node-level 'environment' field (explicit override)
+        3. Workflow 'node_mappings' (workflow-specific)
+        4. External 'node_type_mappings' (shared definitions - LEGACY)
+        5. Platform environment 'workflow_engine' (DEFAULT for all base nodes)
         
         The platform environment is used by default unless explicitly configured.
         This means base workflow nodes automatically use the platform environment,
         and only user-defined nodes with special dependencies need custom environments.
+        
+        Args:
+            node_metadata: Metadata from @workflow_node decorator containing:
+                - dependencies: List of required packages
+                - environment: Explicit environment name (if specified)
         
         Returns:
             Dict with:
@@ -124,13 +130,63 @@ class WorkflowEnvironmentManager:
         # Store workflow config for environment resolution
         self._current_workflow_config = workflow_config
         
-        # Check node-specific environment (highest priority)
+        # PRIORITY 1: Check node decorator metadata (from @workflow_node)
+        if node_metadata:
+            dependencies = node_metadata.get('dependencies', [])
+            env_name = node_metadata.get('environment')
+            isolation_mode = node_metadata.get('isolation_mode', 'auto')
+            
+            # If isolation_mode is "none", use platform environment and ensure dependencies
+            if isolation_mode == 'none':
+                # Install missing dependencies into platform environment
+                if dependencies:
+                    self._ensure_requirements(self.engine_env, dependencies)
+                
+                # Use platform environment (no isolation)
+                return {
+                    'python_executable': self.engine_python,
+                    'env_path': self.engine_env,
+                    'env_name': 'workflow_engine',
+                    'is_isolated': False
+                }
+            
+            # If environment explicitly specified in decorator
+            if env_name:
+                return self._resolve_environment(
+                    {
+                        'name': env_name,
+                        'requirements': dependencies
+                    },
+                    f"node_metadata:{node_type}",
+                    workflow_config
+                )
+            
+            # If dependencies specified but no explicit environment,
+            # auto-create environment from dependencies
+            elif dependencies:
+                # If subprocess isolation, use node name as environment name
+                if isolation_mode == 'subprocess':
+                    auto_env_name = node_type
+                else:
+                    # Auto-generate environment name from dependencies hash
+                    auto_env_name = self._generate_env_name_from_deps(dependencies)
+                
+                return self._resolve_environment(
+                    {
+                        'name': auto_env_name,
+                        'requirements': dependencies
+                    },
+                    f"auto_generated:{node_type}",
+                    workflow_config
+                )
+        
+        # PRIORITY 2: Check node-specific environment (workflow JSON override)
         node_env_spec = node_config.get('environment')
         if node_env_spec:
             return self._resolve_environment(
                 node_env_spec, f"node:{node_type}", workflow_config)
         
-        # Check workflow-level node environment mapping
+        # PRIORITY 3: Check workflow-level node environment mapping
         if workflow_config:
             env_config = workflow_config.get('environments', {})
             node_mappings = env_config.get('node_mappings', {})
@@ -140,7 +196,7 @@ class WorkflowEnvironmentManager:
                 return self._resolve_environment(
                     env_name, f"workflow_mapping:{node_type}", workflow_config)
         
-        # Check external node type mappings
+        # PRIORITY 4: Check external node type mappings (LEGACY - environments.json)
         if node_type in self._external_mappings:
             env_name = self._external_mappings[node_type]
             self.logger.debug(
@@ -148,7 +204,7 @@ class WorkflowEnvironmentManager:
             return self._resolve_environment(
                 env_name, f"external_mapping:{node_type}", workflow_config)
         
-        # Default to platform environment (workflow_engine)
+        # PRIORITY 5: Default to platform environment (workflow_engine)
         # This is used by all base nodes automatically
         return {
             'python_executable': self.engine_python,
@@ -156,6 +212,29 @@ class WorkflowEnvironmentManager:
             'env_name': 'workflow_engine',
             'is_isolated': False
         }
+    
+    def _generate_env_name_from_deps(self, dependencies: List[str]) -> str:
+        """
+        Generate deterministic environment name from dependencies
+        
+        Uses primary package name + hash of all dependencies for uniqueness
+        """
+        import hashlib
+        
+        if not dependencies:
+            return "auto-env"
+        
+        # Sort for consistency
+        sorted_deps = sorted(dependencies)
+        
+        # Hash the dependencies
+        dep_string = ",".join(sorted_deps)
+        dep_hash = hashlib.md5(dep_string.encode()).hexdigest()[:8]
+        
+        # Use primary package name (first one, cleaned)
+        primary = dependencies[0].split("[")[0].split("==")[0].split(">=")[0]
+        
+        return f"{primary}-{dep_hash}"
     
     def _resolve_environment(self,
                              env_spec: Any,
@@ -234,7 +313,7 @@ class WorkflowEnvironmentManager:
             if not env_path.exists():
                 self.logger.warning(
                     f"Environment not found: {env_path} (context: {context})")
-                self.logger.info(f"🔧 Creating new virtual environment: {env_path.name}")
+                self.logger.info(f"Creating new virtual environment: {env_path.name}")
                 self.logger.info(f"   Requirements: {requirements}")
                 self._create_environment(env_path, requirements)
             else:
@@ -290,22 +369,22 @@ class WorkflowEnvironmentManager:
             env_path: Path where environment should be created
             requirements: List of package requirements (e.g., ['torch>=2.0', 'numpy'])
         """
-        self.logger.info(f"📦 Creating virtual environment: {env_path.name}")
+        self.logger.info(f"Creating virtual environment: {env_path.name}")
         self.logger.info(f"   Location: {env_path}")
         
         try:
             # Create venv using uv
-            self.logger.info("🔧 Running: uv venv...")
+            self.logger.info("Running: uv venv...")
             subprocess.run(
                 ["uv", "venv", str(env_path)],
                 check=True,
                 capture_output=True
             )
-            self.logger.info("✅ Virtual environment created successfully")
+            self.logger.info("Virtual environment created successfully")
             
             # Install requirements using uv
             if requirements:
-                self.logger.info(f"📦 Installing {len(requirements)} packages with uv...")
+                self.logger.info(f"Installing {len(requirements)} packages with uv...")
                 self.logger.info(f"   Packages: {', '.join(requirements)}")
                 
                 # Use uv pip install with the environment's Python
@@ -319,9 +398,9 @@ class WorkflowEnvironmentManager:
                     check=True,
                     capture_output=True
                 )
-                self.logger.info("✅ All packages installed successfully")
+                self.logger.info("All packages installed successfully")
             else:
-                self.logger.info("ℹ️ No requirements to install")
+                self.logger.info("No requirements to install")
             
             self.logger.info(f"🎉 Environment {env_path.name} ready for use")
             
@@ -375,7 +454,7 @@ class WorkflowEnvironmentManager:
                     missing_requirements.append(req)
                     
             if missing_requirements:
-                self.logger.info(f"📦 Installing {len(missing_requirements)} missing packages...")
+                self.logger.info(f"Installing {len(missing_requirements)} missing packages...")
                 
                 # Install missing requirements using uv
                 subprocess.run(
@@ -383,7 +462,7 @@ class WorkflowEnvironmentManager:
                     check=True,
                     capture_output=True
                 )
-                self.logger.info("✅ Missing packages installed successfully")
+                self.logger.info("Missing packages installed successfully")
                 
         except subprocess.CalledProcessError as e:
             error_msg = f"Failed to check/install requirements: {e.stderr.decode() if e.stderr else str(e)}"
@@ -900,7 +979,7 @@ except Exception as e:
         python_exe = str(env_info['python_executable'])
         
         self.logger.info(
-            f"🚀 Executing {node_type} with TRUE shared memory "
+            f"Executing {node_type} with TRUE shared memory "
             f"(workflow-controlled) in isolated env: {env_name}"
         )
         
@@ -1023,7 +1102,7 @@ try:
     
 except Exception as e:
     import traceback
-    print(f"❌ Error: {{e}}", flush=True)
+    print(f"Error: {{e}}", flush=True)
     print(traceback.format_exc(), flush=True)
     
     # Try to signal error
@@ -1105,11 +1184,11 @@ except Exception as e:
             
             # Check status
             if flag == FLAG_DONE and output_data.get('status') == 'success':
-                self.logger.info("✅ Subprocess completed successfully")
+                self.logger.info("Subprocess completed successfully")
                 result = output_data['result']
                 
             elif flag == FLAG_ERROR or output_data.get('status') == 'error':
-                self.logger.error("❌ Subprocess execution failed")
+                self.logger.error("Subprocess execution failed")
                 error_msg = output_data.get('error', 'Unknown error')
                 traceback_msg = output_data.get('traceback', '')
                 raise RuntimeError(
@@ -1169,4 +1248,4 @@ if __name__ == "__main__":
     for env in manager.list_environments():
         print(f"  {env['type']:10} | {env['name']:20} | {env['path']}")
     
-    print("\n✅ Environment Manager ready!")
+    print("\nEnvironment Manager ready!")

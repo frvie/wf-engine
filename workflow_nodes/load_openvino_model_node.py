@@ -11,8 +11,8 @@ from workflow_decorator import workflow_node
 
 
 @workflow_node("load_openvino_model",
-               dependencies=["openvino"],
-               isolation_mode="in_process")
+               dependencies=["openvino", "numpy"],
+               isolation_mode="none")
 def load_openvino_model_node(model_path: str, device: str = "NPU",
                              session_namespace: str = "npu"):
     """Load ONNX model with OpenVINO provider (NPU/CPU/GPU support)"""

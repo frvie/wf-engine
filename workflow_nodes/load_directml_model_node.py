@@ -10,9 +10,8 @@ from workflow_decorator import workflow_node
 
 
 @workflow_node("load_directml_model", 
-               dependencies=["onnxruntime-directml"], 
-               isolation_mode="auto",
-               environment="directml-env")
+               dependencies=["onnxruntime-directml", "numpy", "opencv-python", "Pillow"], 
+               isolation_mode="subprocess")
 def load_directml_model_node(model_path: str, device_id: int = 0, 
                             session_namespace: str = "directml"):
     """Load ONNX model with DirectML provider (conflicts with onnxruntime-gpu)"""
