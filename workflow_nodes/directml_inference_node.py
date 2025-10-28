@@ -28,7 +28,10 @@ def directml_inference_node(model_info: Dict = None,
     # Get model path (handle subprocess temp directory)
     model_path = model_info.get('model_path', 'models/yolov8s.onnx')
     if 'temp' in os.getcwd().lower() or not os.path.isabs(model_path):
-        model_path = os.path.join(r'C:\dev\workflow_engine', 'models', 'yolov8s.onnx')
+        # Get the project root directory (where this script is located)
+        import sys
+        project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        model_path = os.path.join(project_root, 'models', 'yolov8s.onnx')
     
     # Get device ID from GPU detection or default to 0
     device_id = gpu_info.get('directml_device_id', 0) if gpu_info else 0
@@ -45,7 +48,12 @@ def directml_inference_node(model_info: Dict = None,
     # Get test image
     test_image = _IMAGE_CACHE.get('image_path')
     if not test_image or test_image == "dummy_image":
-        test_images = [r'C:\dev\workflow_engine\input\soccer.jpg', 'input/soccer.jpg']
+        # Get the project root directory
+        project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        test_images = [
+            os.path.join(project_root, 'input', 'soccer.jpg'),
+            'input/soccer.jpg'
+        ]
         test_image = next((p for p in test_images if os.path.exists(p)), None)
         if not test_image:
             return {"error": "No test image found"}
