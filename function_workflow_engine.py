@@ -31,8 +31,41 @@ class FunctionWorkflowEngine:
             self.workflow_config = {}
             self.nodes = []
         
+        # Ensure core dependencies are installed before initializing
+        self._ensure_core_dependencies()
+        
         self._initialize_environment_manager()
         self._discover_and_load_nodes()
+    
+    def _ensure_core_dependencies(self):
+        """Ensure core workflow dependencies are installed"""
+        core_deps = ["numpy", "opencv-python", "requests", "onnx"]
+        
+        try:
+            import subprocess
+            
+            # Check which core packages are missing
+            missing = []
+            for dep in core_deps:
+                pkg_name = dep.replace('-', '_')  # opencv-python -> opencv_python -> cv2
+                if pkg_name == 'opencv_python':
+                    pkg_name = 'cv2'
+                try:
+                    __import__(pkg_name)
+                except ImportError:
+                    missing.append(dep)
+            
+            if missing:
+                self.logger.info(f"Installing {len(missing)} core dependencies: {', '.join(missing)}")
+                subprocess.run(
+                    ["uv", "pip", "install"] + missing,
+                    check=True,
+                    capture_output=True
+                )
+                self.logger.info("Core dependencies installed successfully")
+        except Exception as e:
+            self.logger.warning(f"Could not auto-install core dependencies: {e}")
+            self.logger.warning("Please run: uv pip install numpy opencv-python requests onnx")
     
     def _initialize_environment_manager(self):
         """Initialize environment manager for handling dependencies"""
@@ -129,10 +162,41 @@ class FunctionWorkflowEngine:
         
         return inputs
     
+    def _ensure_main_env_dependencies(self, dependencies: List[str]):
+        """Install missing dependencies in the main environment using uv"""
+        if not dependencies:
+            return
+            
+        try:
+            import subprocess
+            
+            # Check which packages are missing
+            missing = []
+            for dep in dependencies:
+                pkg_name = dep.split('>=')[0].split('==')[0].split('<')[0].split('>')[0].strip()
+                try:
+                    __import__(pkg_name.replace('-', '_'))
+                except ImportError:
+                    missing.append(dep)
+            
+            if missing:
+                self.logger.info(f"Installing {len(missing)} missing dependencies: {', '.join(missing)}")
+                subprocess.run(
+                    ["uv", "pip", "install"] + missing,
+                    check=True,
+                    capture_output=True
+                )
+                self.logger.info("Dependencies installed successfully")
+        except Exception as e:
+            self.logger.warning(f"Failed to auto-install dependencies: {e}")
+    
     def _execute_function_node(self, node: Dict) -> Dict:
         """Execute a function-based node, using environment manager if needed"""
         function_name = node['function']
         inputs = self._prepare_inputs(node)
+        
+        # Debug: Log the prepared inputs
+        self.logger.debug(f"Prepared inputs for {node['id']}: {inputs}")
         
         # Get function metadata if available
         node_metadata = None
@@ -144,6 +208,10 @@ class FunctionWorkflowEngine:
                 'environment': getattr(func, 'environment', None),
                 'isolation_mode': getattr(func, 'isolation_mode', 'auto')
             }
+            
+            # Auto-install missing dependencies for in-process execution
+            if node_metadata['dependencies'] and node_metadata['isolation_mode'] != 'subprocess':
+                self._ensure_main_env_dependencies(node_metadata['dependencies'])
         
         # Check if isolation needed
         if self.environment_manager and node_metadata:
@@ -493,6 +561,13 @@ def run_function_workflow(workflow_file: str) -> Dict:
     """Load and execute a function-based workflow"""
     with open(workflow_file, 'r') as f:
         workflow_data = json.load(f)
+    
+    # Debug: Log the loaded workflow data
+    import logging
+    logger = logging.getLogger('workflow.engine')
+    logger.debug(f"Loaded workflow from {workflow_file}")
+    for node in workflow_data.get('nodes', []):
+        logger.debug(f"  Node {node['id']}: inputs = {node.get('inputs', {})}")
     
     engine = FunctionWorkflowEngine(workflow_data)
     return engine.execute()

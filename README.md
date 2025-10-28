@@ -69,6 +69,31 @@ except Exception as e:
     # Continue to next nodes
 ```
 
+### 6. Automatic Dependency Installation
+**Problem:** Manual dependency installation is tedious and error-prone  
+**Solution:** Auto-detect and install missing dependencies
+
+```python
+# Two-phase dependency resolution:
+
+# Phase 1: Core dependencies at engine initialization
+core_deps = ['numpy', 'opencv-python', 'requests', 'onnx']
+_ensure_core_dependencies(core_deps)
+
+# Phase 2: Node-specific dependencies before execution
+node_deps = ['onnxruntime-directml']  # From @workflow_node decorator
+_ensure_main_env_dependencies(node_deps)
+
+# Uses uv pip install for fast, reliable installation
+subprocess.run(['uv', 'pip', 'install'] + missing_deps)
+```
+
+**Example Output:**
+```
+📦 Installing 2 missing dependencies: opencv-python, onnxruntime-directml
+✅ Dependencies installed successfully
+```
+
 ---
 
 
@@ -90,11 +115,11 @@ uv sync
 
 ### 🎯 Available Workflows
 
-#### 1. **Real-Time Video Object Detection** (Recommended)
+#### 1. **Real-Time Webcam Object Detection** (Recommended)
 Live webcam object detection with DirectML GPU acceleration.
 
 ```bash
-python function_workflow_engine.py workflows/video_detection.json
+uv run function_workflow_engine.py workflows/video_detection.json
 ```
 
 **Features:**
@@ -104,6 +129,7 @@ python function_workflow_engine.py workflows/video_detection.json
 - 📹 Interactive recording (press `S` to toggle)
 - ⚡ Auto-downloads YOLOv8s model (no manual setup!)
 - 🎯 Detects 80 COCO object classes
+- 📦 **Automatic dependency installation** - no manual setup required!
 
 **Controls:**
 - `Q` - Quit
@@ -111,18 +137,57 @@ python function_workflow_engine.py workflows/video_detection.json
 
 **Configuration:**
 Edit `workflows/video_detection.json` to customize:
-- `source`: Webcam index (default: `"0"`) or video file path
+- `source`: Webcam index (default: `"0"`)
 - `max_duration`: Recording duration in seconds (default: `0` = infinite)
-- `confidence_threshold`: Detection confidence (default: `0.25`)
+- `conf_threshold`: Detection confidence (default: `0.25`)
 - `iou_threshold`: Non-maximum suppression threshold (default: `0.45`)
 
 ---
 
-#### 2. **Parallel Multi-Backend Inference**
+#### 2. **MP4 Video Object Detection**
+Process pre-recorded video files with object detection.
+
+```bash
+uv run function_workflow_engine.py workflows/video_detection_mp4.json
+```
+
+**Features:**
+- 📹 Process MP4/AVI/MOV video files
+- 🚀 DirectML GPU acceleration (~48 FPS on test video)
+- 🎨 Live playback with bounding boxes and labels
+- 💾 Optional video recording with annotations
+- ⚡ Auto-downloads YOLOv8s model
+- 🎯 Detects 80 COCO object classes
+- 📦 **Automatic dependency installation**
+
+**Example Output:**
+```
+Video opened: 768x432 @ 24 FPS
+Frames processed: 357
+Total detections: 2,360
+Duration: 7.37s
+Average FPS: 48.4
+```
+
+**Controls:**
+- `Q` - Quit
+- `S` - Start/Stop recording
+
+**Configuration:**
+Edit `workflows/video_detection_mp4.json` to customize:
+- `source`: Path to video file (e.g., `"videos/my_video.mp4"`)
+- `conf_threshold`: Detection confidence (default: `0.25`)
+- `iou_threshold`: Non-maximum suppression threshold (default: `0.45`)
+- `save_video`: Save annotated output (default: `false`)
+- `output_path`: Output video path (default: `"output_detections.mp4"`)
+
+---
+
+#### 3. **Parallel Multi-Backend Inference**
 Compare YOLOv8 inference across multiple backends (CPU, DirectML GPU, NPU, OpenVINO).
 
 ```bash
-python function_workflow_engine.py workflows/parallel_yolov8.json
+uv run function_workflow_engine.py workflows/parallel_yolov8.json
 ```
 
 **Features:**
@@ -130,6 +195,7 @@ python function_workflow_engine.py workflows/parallel_yolov8.json
 - 📊 Performance comparison and statistics
 - 🎯 Auto-downloads YOLOv8s model
 - ⚡ Smart environment isolation (DirectML runs in subprocess)
+- 📦 **Automatic dependency installation**
 
 **Output:**
 ```
