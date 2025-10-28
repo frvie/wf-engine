@@ -1,0 +1,75 @@
+{
+  "workflow": {
+    "name": "Video Object Detection with DirectML",
+    "description": "High-performance video detection pipeline optimized for maximum FPS. Uses threaded capture, batch processing, GPU warmup, and efficient visualization.",
+    "version": "2.0"
+  },
+  "nodes": [
+    {
+      "id": "download_model",
+      "function": "workflow_nodes.download_model_node.download_model_node",
+      "inputs": {
+        "model_name": "yolov8s.onnx",
+        "models_dir": "models"
+      }
+    },
+    {
+      "id": "load_model",
+      "function": "workflow_nodes.load_directml_model_node.load_directml_model_node",
+      "depends_on": ["download_model"],
+      "inputs": {
+        "model_path": "$download_model.model_path",
+        "device_id": 0
+      }
+    },
+    {
+      "id": "video_stream",
+      "function": "workflow_nodes.video_stream_node.video_stream_node",
+      "inputs": {
+        "source": "0",
+        "max_frames": 450,
+        "resize_width": 640,
+        "resize_height": 640,
+        "fps_limit": 30,
+        "use_threading": true
+      }
+    },
+    {
+      "id": "batch_inference",
+      "function": "workflow_nodes.batch_inference_node.batch_inference_node",
+      "depends_on": ["load_model", "video_stream"],
+      "inputs": {
+        "frames": "$video_stream.frames",
+        "batch_size": 1,
+        "conf_threshold": 0.25,
+        "iou_threshold": 0.45,
+        "warmup_iterations": 5
+      }
+    },
+    {
+      "id": "visualize",
+      "function": "workflow_nodes.visualize_detections_node.visualize_detections_node",
+      "depends_on": ["video_stream", "batch_inference"],
+      "inputs": {
+        "frames": "$video_stream.frames",
+        "detections": "$batch_inference.detections",
+        "display": false,
+        "save_video": true,
+        "output_path": "output_detections.mp4",
+        "fps": 30,
+        "font_scale": 0.4,
+        "thickness": 1,
+        "codec": "mp4v",
+        "skip_empty_frames": false
+      }
+    },
+    {
+      "id": "performance_stats",
+      "function": "workflow_nodes.performance_stats_node.performance_stats_node",
+      "depends_on": ["batch_inference"],
+      "inputs": {
+        "directml_result": "$batch_inference"
+      }
+    }
+  ]
+}

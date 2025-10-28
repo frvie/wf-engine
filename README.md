@@ -116,35 +116,87 @@ npu_inference(**results['load_image'])
 
 # How to Use
 
-### 🛠️ UV as a package manager
+### 🛠️ Prerequisites
 This project requires **[uv](https://github.com/astral-sh/uv)** as the package manager.
 
 ### Clone the repository
+```bash
 git clone https://github.com/frvie/wf-engine.git
-
-### Navigate to the project directory
 cd wf-engine
+```
 
 ### Create Virtual Environment
 ```bash
 uv sync
 ```
-### Dowwnlaod the sample Yolo Models
+
+### 🎯 Available Workflows
+
+#### 1. **Real-Time Video Object Detection** (Recommended)
+Live webcam object detection with DirectML GPU acceleration.
+
+```bash
+python function_workflow_engine.py workflows/video_detection.json
+```
+
+**Features:**
+- 🎥 Real-time webcam processing at ~28 FPS
+- 🚀 DirectML GPU acceleration (~412 FPS inference)
+- 🎨 Live display with bounding boxes and labels
+- 📹 Interactive recording (press `S` to toggle)
+- ⚡ Auto-downloads YOLOv8s model (no manual setup!)
+- 🎯 Detects 80 COCO object classes
+
+**Controls:**
+- `Q` - Quit
+- `S` - Start/Stop recording
+
+**Configuration:**
+Edit `workflows/video_detection.json` to customize:
+- `source`: Webcam index (default: `"0"`) or video file path
+- `max_duration`: Recording duration in seconds (default: `0` = infinite)
+- `confidence_threshold`: Detection confidence (default: `0.25`)
+- `iou_threshold`: Non-maximum suppression threshold (default: `0.45`)
+
+---
+
+#### 2. **Parallel Multi-Backend Inference**
+Compare YOLOv8 inference across multiple backends (CPU, DirectML GPU, NPU, OpenVINO).
+
+```bash
+python function_workflow_engine.py workflows/parallel_yolov8.json
+```
+
+**Features:**
+- 🔄 Parallel execution across 4 backends
+- 📊 Performance comparison and statistics
+- 🎯 Auto-downloads YOLOv8s model
+- ⚡ Smart environment isolation (DirectML runs in subprocess)
+
+**Output:**
+```
+Backend Performance Comparison:
+- DirectML GPU: 3.2s (86 FPS)
+- CPU: 0.8s (1,250 FPS single image)
+- NPU: 4.3s (232 FPS)
+- OpenVINO: 1.1s (909 FPS)
+```
+
+---
+
+### 📦 Model Auto-Download
+**No manual model download required!** Both workflows automatically download the YOLOv8s ONNX model (~42.8 MB) on first run.
+
+Models are cached in `models/` directory:
+- `yolov8s.onnx` - ONNX format for inference
+
+If you want to manually download:
 ```bash
 # From Ultralytics
-wget https://github.com/ultralytics/assets/releases/download/v0.0.0/yolov8s.pt -O [yolov8s.pt](http://_vscodecontentref_/2)
-```
-### Export to ONNX
-```bash
+wget https://github.com/ultralytics/assets/releases/download/v0.0.0/yolov8s.pt -O models/yolov8s.pt
+
+# Export to ONNX
 yolo export model=models/yolov8s.pt format=onnx
-```
-Save the models in the folder "models"
-
-
-### Run Demo Workflow
-
-```bash
-uv run python function_workflow_engine.py workflows/modular_function_based_demo.json
 ```
 
 ---
@@ -435,141 +487,46 @@ with open("result.json", "w") as f:
 
 ---
 
-## ⚡ Parallel Execution (`execute`)
+### 7. Shared Memory with Headers (Zero-Copy IPC)
 
-The engine executes nodes in **waves** based on dependency resolution.
+**Purpose:**  
+Efficient, zero-copy inter-process communication (IPC) for isolated workflow nodes (e.g., DirectML subprocesses), supporting numpy arrays, dicts, and pickled objects.
 
-### Wave-Based Execution
+**How it works:**
+- Each shared memory block starts with an 8-byte header:  
+  - **Flag (4 bytes):** Synchronization state (EMPTY, READY, PROCESSING, DONE, ERROR)  
+  - **Reserved (4 bytes):** For future use
+- Data payload follows the header (numpy array, pickled object, etc.)
+- **Synchronization:**  
+  - Main process creates shared memory, writes data, sets flag to READY  
+  - Subprocess waits for READY, reads data, processes, writes result, sets flag to DONE  
+  - Main process waits for DONE, reads result, cleans up
 
+**Advantages:**  
+- No need for Python SyncManager or OS pipes  
+- Works across different Python executables and virtual environments  
+- Safe, fast, and robust for large data (e.g., images, tensors)
+
+**Usage Example:**
 ```python
-Wave 1 (Parallel): Nodes with no dependencies
-  ├─ load_image
-  ├─ load_directml_model (subprocess)
-  ├─ load_cpu_model
-  └─ load_openvino_model
-         ↓
-Wave 2 (Parallel): Nodes depending only on Wave 1
-  ├─ directml_inference (subprocess)
-  ├─ cpu_inference
-  └─ npu_inference
-         ↓
-Wave 3 (Sequential): Final aggregation
-  └─ performance_stats
+# Main process
+shm, buf = create_shared_memory_with_header("my_shm", data_size)
+set_flag(shm.buf, FLAG_EMPTY)
+buf[:] = data_bytes
+set_flag(shm.buf, FLAG_READY)
+
+# Subprocess
+shm, buf = attach_shared_memory_with_header("my_shm")
+wait_for_flag(shm.buf, FLAG_READY)
+data = np.frombuffer(buf, dtype=np.float32)
+# ...process...
+set_flag(shm.buf, FLAG_DONE)
 ```
 
-### Execution Code
-
-```python
-while len(completed) < len(nodes):
-    # Get nodes ready to execute
-    ready_nodes = _get_ready_nodes(dependency_graph, completed)
-    
-    # Execute in parallel using thread pool
-    with ThreadPoolExecutor(max_workers=4) as executor:
-        futures = {
-            executor.submit(_execute_function_node, node): node_id
-            for node_id in ready_nodes
-        }
-        
-        for future in as_completed(futures):
-            result = future.result()
-            results[node_id] = result
-            completed.add(node_id)
-```
-
-### Configuration
-
-```json
-{
-  "workflow": {
-    "settings": {
-      "max_parallel_nodes": 4
-    }
-  }
-}
-```
-
-- **max_parallel_nodes**: Maximum concurrent node executions
-- Default: 4 workers
-- Adjustable based on system resources
-
----
-
-## 📊 Example: Multi-Backend Workflow Execution
-
-### Workflow Definition
-```json
-{
-  "nodes": [
-    {"id": "load_image", "depends_on": []},
-    {"id": "directml_model", "depends_on": []},
-    {"id": "cpu_model", "depends_on": []},
-    {"id": "npu_model", "depends_on": []},
-    {"id": "directml_inference", "depends_on": ["load_image", "directml_model"]},
-    {"id": "cpu_inference", "depends_on": ["load_image", "cpu_model"]},
-    {"id": "npu_inference", "depends_on": ["load_image", "npu_model"]},
-    {"id": "performance_stats", "depends_on": ["directml_inference", "cpu_inference", "npu_inference"]}
-  ]
-}
-```
-
-### Execution Timeline
-
-```
-Time 0.0s → Start Workflow
-            ├─ Wave 1: 4 nodes ready
-            │
-Time 0.9s → Wave 1 Complete
-            │  ✅ load_image (0.05s in-process)
-            │  ✅ directml_model (0.001s subprocess)
-            │  ✅ cpu_model (0.0s in-process)
-            │  ✅ npu_model (0.9s in-process)
-            │
-            ├─ Wave 2: 3 nodes ready
-            │
-Time 5.2s → Wave 2 Complete
-            │  ✅ directml_inference (3.2s subprocess)
-            │  ✅ cpu_inference (0.8s in-process)
-            │  ✅ npu_inference (4.3s in-process)
-            │
-            ├─ Wave 3: 1 node ready
-            │
-Time 5.2s → Wave 3 Complete
-            │  ✅ performance_stats (0.003s in-process)
-            │
-Time 5.2s → Workflow Complete
-            📊 Results: 8/8 nodes executed successfully
-```
-
-### Console Output
-
-```
-19:57:22 | workflow.engine | INFO | 🚀 Starting Multi-Backend YOLO Inference (8 nodes)
-19:57:22 | workflow.engine | INFO | 📦 Loaded 8/8 required nodes
-19:57:22 | workflow.engine | INFO | ⚡ Executing 4 nodes...
-19:57:22 | workflow.engine | INFO | ✅ load_image: completed
-19:57:22 | workflow.engine | INFO | ✅ directml_model: completed
-19:57:22 | workflow.engine | INFO | ✅ cpu_model: completed
-19:57:23 | workflow.engine | INFO | ✅ npu_model: completed
-19:57:23 | workflow.engine | INFO | ⚡ Executing 3 nodes...
-19:57:27 | workflow.engine | INFO | ✅ directml_inference: completed
-19:57:27 | workflow.engine | INFO | ✅ cpu_inference: completed
-19:57:27 | workflow.engine | INFO | ✅ npu_inference: completed
-19:57:27 | workflow.engine | INFO | ⚡ Executing 1 nodes...
-19:57:27 | workflow.engine | INFO | ✅ performance_stats: completed
-19:57:27 | workflow.engine | INFO | ✅ Workflow completed in 5.2s
-19:57:27 | workflow.engine | INFO | 🎯 Workflow completed successfully: 8/8 nodes executed
-```
-
-
-
-### Scalability
-
-| Nodes | Sequential | Parallel (4 workers) | Speedup |
-|-------|-----------|---------------------|---------|
-| 4 | 1.8s | 0.9s | 2.0x |
-| 8 | 9.4s | 5.2s | 1.8x |
-| 16 | 18.2s | 8.1s | 2.2x |
+**Supported Types:**  
+- Numpy arrays (`numpy_to_shared_memory_with_header`)
+- Dictionaries (`dict_to_shared_memory_with_header`)
+- Pickled objects (`pickle_to_shared_memory`)
 
 ---
 

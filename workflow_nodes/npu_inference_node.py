@@ -41,6 +41,11 @@ def npu_inference_node(model_session: str = None,
         # Initialize OpenVINO
         core = ov.Core()
         
+        # Enable model caching for faster subsequent loads
+        cache_dir = os.path.join(os.getcwd(), '.openvino_cache')
+        os.makedirs(cache_dir, exist_ok=True)
+        core.set_property({'CACHE_DIR': cache_dir})
+        
         # Check available devices
         available_devices = core.available_devices
         logger = logging.getLogger('workflow.inference.npu')
@@ -67,11 +72,18 @@ def npu_inference_node(model_session: str = None,
         if ov_device == "NPU":
             # Enable performance optimizations for NPU
             config = {
-                "PERFORMANCE_HINT": "THROUGHPUT",
+                "PERFORMANCE_HINT": "LATENCY",  # Changed from THROUGHPUT for single-image inference
                 "INFERENCE_PRECISION_HINT": "f16",  # NPU optimized for FP16
-                "NUM_STREAMS": "AUTO"
+                "NUM_STREAMS": "1",  # Single stream for latency-focused workload
+                "PERFORMANCE_HINT_NUM_REQUESTS": "1"  # Optimize for single request
             }
             logger.info(f"NPU config: {config}")
+        elif ov_device == "GPU":
+            # GPU-specific optimizations
+            config = {
+                "PERFORMANCE_HINT": "LATENCY",
+                "GPU_THROUGHPUT_STREAMS": "1"
+            }
         
         compiled_model = core.compile_model(model, ov_device, config)
         logger.info(f"Successfully compiled model for {ov_device}")
@@ -108,12 +120,16 @@ def npu_inference_node(model_session: str = None,
         infer_request = compiled_model.create_infer_request()
         input_tensor = ov.Tensor(array=image_tensor)
         
-        # Run inference iterations using OpenVINO
+        # Warmup run (important for NPU to optimize first inference)
+        infer_request.set_input_tensor(input_tensor)
+        infer_request.infer()
+        
+        # Run inference iterations using OpenVINO with async for better performance
         inference_times = []
         for _ in range(iterations):
             start_time = time.perf_counter()
             
-            # Set input and run inference
+            # Use synchronous inference (async doesn't help for single image)
             infer_request.set_input_tensor(input_tensor)
             infer_request.infer()
             

@@ -1,0 +1,32 @@
+{
+  "workflow": {
+    "name": "Real-Time Video Object Detection",
+    "description": "Continuous real-time object detection with live display. Press Q to quit, S to toggle recording.",
+    "version": "1.0"
+  },
+  "nodes": [
+    {
+      "id": "download_model",
+      "function": "workflow_nodes.download_model_node.download_model_node",
+      "inputs": {
+        "model_name": "yolov8s.onnx",
+        "models_dir": "models"
+      }
+    },
+    {
+      "id": "realtime_detection",
+      "function": "workflow_nodes.realtime_video_detection_node.realtime_video_detection_node",
+      "depends_on": ["download_model"],
+      "inputs": {
+        "source": "0",
+        "model_path": "$download_model.model_path",
+        "conf_threshold": 0.25,
+        "iou_threshold": 0.45,
+        "display_fps": true,
+        "save_video": false,
+        "output_path": "realtime_output.mp4",
+        "max_duration": 0
+      }
+    }
+  ]
+}
