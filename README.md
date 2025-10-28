@@ -71,48 +71,6 @@ except Exception as e:
 
 ---
 
-## 🎯 Performance Optimizations
-
-### 1. Pre-loaded Functions
-```python
-# Slow: Import on every execution
-module = importlib.import_module('workflow_nodes.cpu_inference_node')
-func = getattr(module, 'cpu_inference_node')
-
-# Fast: Pre-load once, reuse
-func = discovered_nodes['workflow_nodes.cpu_inference_node.cpu_inference_node']['function']
-```
-
-### 2. Thread Pool Reuse
-```python
-# Executor created once per wave
-with ThreadPoolExecutor(max_workers=4) as executor:
-    # Submit all nodes in wave
-    futures = {executor.submit(execute, node): node_id for node_id in ready_nodes}
-```
-
-### 3. In-Process Execution
-```python
-# Subprocess overhead: ~50-100ms startup
-# In-process: ~0ms overhead
-
-# Example: NPU inference
-In-process: 17.1ms per inference
-Subprocess: Would be 67-117ms per inference
-```
-
-### 4. Dependency Caching
-```python
-# Results stored once, reused by all dependents
-self.results['load_image'] = {"image_path": "...", "image_data": [...]}
-
-# All 3 inference nodes reuse this data
-cpu_inference(**results['load_image'])
-directml_inference(**results['load_image'])
-npu_inference(**results['load_image'])
-```
-
----
 
 # How to Use
 
