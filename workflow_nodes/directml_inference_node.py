@@ -33,11 +33,21 @@ def directml_inference_node(model_info: Dict = None,
         project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         model_path = os.path.join(project_root, 'models', 'yolov8s.onnx')
     
-    # Get device ID from GPU detection or default to 0
+    # Detect DirectML GPU availability
+    try:
+        import onnxruntime as ort
+        available_providers = ort.get_available_providers()
+        if 'DmlExecutionProvider' not in available_providers:
+            logger.warning("DirectML GPU not available. Skipping inference.")
+            return {"error": "DirectML GPU not available.", "skipped": True, "available_providers": available_providers}
+    except Exception as e:
+        logger.warning(f"Could not check DirectML provider: {e}")
+        return {"error": f"Could not check DirectML provider: {e}", "skipped": True}
+
     device_id = gpu_info.get('directml_device_id', 0) if gpu_info else 0
     gpu_name = gpu_info.get('recommended_gpu', {}).get('name', 'Unknown') if gpu_info else 'Unknown'
     logger.info(f"Using DirectML device {device_id}: {gpu_name}")
-    
+
     # Create DirectML engine
     engine = SimpleOnnxEngine(
         model_path=model_path,
