@@ -77,8 +77,12 @@ def npu_inference_node(model_session: str = None,
                 "GPU_THROUGHPUT_STREAMS": "1"
             }
 
-        compiled_model = core.compile_model(model, ov_device, config)
-        logger.info(f"Successfully compiled model for {ov_device}")
+        try:
+            compiled_model = core.compile_model(model, ov_device, config)
+            logger.info(f"Successfully compiled model for {ov_device}")
+        except Exception as compile_error:
+            logger.warning(f"Failed to compile model for {ov_device}: {compile_error}")
+            return {"error": f"Failed to compile model for {ov_device}: {str(compile_error)}", "skipped": True}
 
         # Use SimpleOnnxEngine for consistent post-processing (always use ONNX)
         onnx_path = model_info.get('model_path', 'models/yolov8s.onnx')

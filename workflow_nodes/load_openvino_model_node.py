@@ -18,16 +18,27 @@ def load_openvino_model_node(model_path: str, device: str = "NPU",
     """Load ONNX model with OpenVINO provider (NPU/CPU/GPU support)"""
     try:
         import openvino as ov
+        import logging
+        logger = logging.getLogger('workflow.model_loader.openvino')
         
         # Convert to absolute path if not already
         if not os.path.isabs(model_path):
             model_path = os.path.abspath(model_path)
         
         if not os.path.exists(model_path):
-            raise FileNotFoundError(f"Model not found: {model_path}")
+            logger.warning(f"Model not found: {model_path}")
+            return {"error": f"Model not found: {model_path}", "skipped": True}
         
         # Initialize OpenVINO core
         core = ov.Core()
+        
+        # Check if device is available
+        available_devices = core.available_devices
+        logger.info(f"Available OpenVINO devices: {available_devices}")
+        
+        if device not in available_devices:
+            logger.warning(f"Requested device '{device}' not available. Skipping.")
+            return {"error": f"Device '{device}' not available.", "skipped": True, "available_devices": available_devices}
         
         # Read model
         model = core.read_model(model=model_path)
@@ -37,7 +48,11 @@ def load_openvino_model_node(model_path: str, device: str = "NPU",
             model.reshape({"images": [1, 3, 640, 640]})
         
         # Compile model for target device
-        compiled_model = core.compile_model(model=model, device_name=device)
+        try:
+            compiled_model = core.compile_model(model=model, device_name=device)
+        except Exception as compile_error:
+            logger.warning(f"Failed to compile model for {device}: {compile_error}")
+            return {"error": f"Failed to compile model for {device}: {str(compile_error)}", "skipped": True}
         
         # Get input/output info
         input_layer = compiled_model.input(0)
@@ -62,4 +77,6 @@ def load_openvino_model_node(model_path: str, device: str = "NPU",
             "compiled_model": compiled_model  # For direct use in inference
         }
     except Exception as e:
-        return {"error": f"Failed to load OpenVINO model: {str(e)}"}
+        logger = logging.getLogger('workflow.model_loader.openvino')
+        logger.warning(f"Failed to load OpenVINO model: {e}")
+        return {"error": f"Failed to load OpenVINO model: {str(e)}", "skipped": True}
