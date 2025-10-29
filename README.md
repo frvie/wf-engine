@@ -100,7 +100,13 @@ subprocess.run(['uv', 'pip', 'install'] + missing_deps)
 # How to Use
 
 ### 🛠️ Prerequisites
-This project requires **[uv](https://github.com/astral-sh/uv)** as the package manager.
+
+Before using this project, you must install:
+
+1. **[uv](https://github.com/astral-sh/uv)** (Python package manager)
+2. **[Microsoft Visual C++ Redistributable 2019-2022](https://learn.microsoft.com/en-US/cpp/windows/latest-supported-vc-redist?view=msvc-170)**
+   - Required for PyTorch, ONNX Runtime, and other libraries on Windows
+   - Download and install from the official Microsoft website
 
 ### Clone the repository
 ```bash
