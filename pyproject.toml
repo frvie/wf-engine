@@ -2,7 +2,7 @@
 name = "wf-engine"
 version = "0.1.0"
 description = "Default virtual environment for workflow engine"
-requires-python = ">=3.12"
+requires-python = ">=3.12,<3.14"
 dependencies = [
     "numpy>=2.0.0",
     "opencv-python>=4.10.0.84",
