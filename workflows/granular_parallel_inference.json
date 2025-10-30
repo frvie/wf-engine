@@ -9,7 +9,7 @@
   "nodes": [
     {
       "id": "download_model",
-      "function": "workflow_nodes.infrastructure.download_model.download_model_node",
+      "function": "src.nodes.download_model.download_model_node",
       "dependencies": [],
       "inputs": {
         "model_name": "yolov8s.onnx",
@@ -18,7 +18,7 @@
     },
     {
       "id": "read_img",
-      "function": "workflow_nodes.atomic.image_ops.read_image_node",
+      "function": "src.nodes.image_ops.read_image_node",
       "inputs": {
         "image_path": "input/soccer.jpg"
       },
@@ -26,7 +26,7 @@
     },
     {
       "id": "resize",
-      "function": "workflow_nodes.atomic.image_ops.resize_image_letterbox_node",
+      "function": "src.nodes.image_ops.resize_image_letterbox_node",
       "inputs": {
         "target_width": 640,
         "target_height": 640
@@ -35,7 +35,7 @@
     },
     {
       "id": "normalize",
-      "function": "workflow_nodes.atomic.image_ops.normalize_image_node",
+      "function": "src.nodes.image_ops.normalize_image_node",
       "inputs": {
         "scale": 255.0
       },
@@ -43,19 +43,19 @@
     },
     {
       "id": "transpose",
-      "function": "workflow_nodes.atomic.image_ops.hwc_to_chw_node",
+      "function": "src.nodes.image_ops.hwc_to_chw_node",
       "inputs": {},
       "dependencies": ["normalize"]
     },
     {
       "id": "add_batch",
-      "function": "workflow_nodes.atomic.image_ops.add_batch_dimension_node",
+      "function": "src.nodes.image_ops.add_batch_dimension_node",
       "inputs": {},
       "dependencies": ["transpose"]
     },
     {
       "id": "cpu_session",
-      "function": "workflow_nodes.atomic.onnx_ops.create_onnx_cpu_session_node",
+      "function": "src.nodes.onnx_ops.create_onnx_cpu_session_node",
       "inputs": {
         "model_path": "models/yolov8s.onnx"
       },
@@ -63,7 +63,7 @@
     },
     {
       "id": "npu_session",
-      "function": "workflow_nodes.model_loaders.openvino_loader.load_openvino_model_node",
+      "function": "src.nodes.openvino_loader.load_openvino_model_node",
       "inputs": {
         "model_path": "models/yolov8s.onnx",
         "device": "NPU"
@@ -72,7 +72,7 @@
     },
     {
       "id": "directml_session",
-      "function": "workflow_nodes.atomic.onnx_ops.create_onnx_directml_session_node",
+      "function": "src.nodes.onnx_ops.create_onnx_directml_session_node",
       "inputs": {
         "model_path": "models/yolov8s.onnx",
         "device_id": "$detect_gpu.directml_device_id"
@@ -81,7 +81,7 @@
     },
     {
       "id": "cpu_benchmark",
-      "function": "workflow_nodes.atomic.onnx_ops.run_onnx_inference_benchmark_node",
+      "function": "src.nodes.onnx_ops.run_onnx_inference_benchmark_node",
       "inputs": {
         "iterations": 5,
         "warmup_iterations": 1
@@ -90,7 +90,7 @@
     },
     {
       "id": "directml_benchmark",
-      "function": "workflow_nodes.atomic.onnx_ops.run_onnx_inference_benchmark_node",
+      "function": "src.nodes.onnx_ops.run_onnx_inference_benchmark_node",
       "inputs": {
         "iterations": 5,
         "warmup_iterations": 1
@@ -99,7 +99,7 @@
     },
     {
       "id": "npu_benchmark",
-      "function": "workflow_nodes.model_loaders.openvino_loader.run_openvino_inference_node",
+      "function": "src.nodes.openvino_loader.run_openvino_inference_node",
       "inputs": {
         "cache_key": "$npu_session.cache_key",
         "input_tensor": "$add_batch.image",
@@ -110,13 +110,13 @@
     },
     {
       "id": "detect_gpu",
-      "function": "workflow_nodes.infrastructure.detect_gpus.detect_gpus_node",
+      "function": "src.nodes.detect_gpus.detect_gpus_node",
       "inputs": {},
       "dependencies": []
     },
     {
       "id": "npu_decode",
-      "function": "workflow_nodes.atomic.yolo_ops.decode_yolo_v8_output_node",
+      "function": "src.nodes.yolo_ops.decode_yolo_v8_output_node",
       "inputs": {
         "outputs": "$npu_benchmark.outputs",
         "num_classes": 80
@@ -125,7 +125,7 @@
     },
     {
       "id": "npu_filter",
-      "function": "workflow_nodes.atomic.yolo_ops.filter_by_confidence_node",
+      "function": "src.nodes.yolo_ops.filter_by_confidence_node",
       "inputs": {
         "conf_threshold": 0.25
       },
@@ -133,13 +133,13 @@
     },
     {
       "id": "npu_convert",
-      "function": "workflow_nodes.atomic.yolo_ops.convert_cxcywh_to_xyxy_node",
+      "function": "src.nodes.yolo_ops.convert_cxcywh_to_xyxy_node",
       "inputs": {},
       "dependencies": ["npu_filter"]
     },
     {
       "id": "npu_nms",
-      "function": "workflow_nodes.atomic.yolo_ops.apply_nms_node",
+      "function": "src.nodes.yolo_ops.apply_nms_node",
       "inputs": {
         "iou_threshold": 0.45
       },
@@ -147,7 +147,7 @@
     },
     {
       "id": "npu_scale",
-      "function": "workflow_nodes.atomic.yolo_ops.scale_boxes_to_original_node",
+      "function": "src.nodes.yolo_ops.scale_boxes_to_original_node",
       "inputs": {
         "boxes": "$npu_nms.boxes",
         "scores": "$npu_nms.scores",
@@ -159,7 +159,7 @@
     },
     {
       "id": "npu_format",
-      "function": "workflow_nodes.atomic.yolo_ops.format_detections_coco_node",
+      "function": "src.nodes.yolo_ops.format_detections_coco_node",
       "inputs": {
         "boxes": "$npu_scale.boxes",
         "scores": "$npu_scale.scores",
@@ -169,7 +169,7 @@
     },
     {
       "id": "npu_summary",
-      "function": "workflow_nodes.atomic.yolo_ops.create_detection_summary_node",
+      "function": "src.nodes.yolo_ops.create_detection_summary_node",
       "inputs": {
         "provider": "OpenVINO NPU"
       },
@@ -177,7 +177,7 @@
     },
     {
       "id": "cpu_decode",
-      "function": "workflow_nodes.atomic.yolo_ops.decode_yolo_v8_output_node",
+      "function": "src.nodes.yolo_ops.decode_yolo_v8_output_node",
       "inputs": {
         "num_classes": 80
       },
@@ -185,7 +185,7 @@
     },
     {
       "id": "directml_decode",
-      "function": "workflow_nodes.atomic.yolo_ops.decode_yolo_v8_output_node",
+      "function": "src.nodes.yolo_ops.decode_yolo_v8_output_node",
       "inputs": {
         "num_classes": 80
       },
@@ -193,7 +193,7 @@
     },
     {
       "id": "cpu_filter",
-      "function": "workflow_nodes.atomic.yolo_ops.filter_by_confidence_node",
+      "function": "src.nodes.yolo_ops.filter_by_confidence_node",
       "inputs": {
         "conf_threshold": 0.25
       },
@@ -201,7 +201,7 @@
     },
     {
       "id": "directml_filter",
-      "function": "workflow_nodes.atomic.yolo_ops.filter_by_confidence_node",
+      "function": "src.nodes.yolo_ops.filter_by_confidence_node",
       "inputs": {
         "conf_threshold": 0.25
       },
@@ -209,19 +209,19 @@
     },
     {
       "id": "cpu_convert",
-      "function": "workflow_nodes.atomic.yolo_ops.convert_cxcywh_to_xyxy_node",
+      "function": "src.nodes.yolo_ops.convert_cxcywh_to_xyxy_node",
       "inputs": {},
       "dependencies": ["cpu_filter"]
     },
     {
       "id": "directml_convert",
-      "function": "workflow_nodes.atomic.yolo_ops.convert_cxcywh_to_xyxy_node",
+      "function": "src.nodes.yolo_ops.convert_cxcywh_to_xyxy_node",
       "inputs": {},
       "dependencies": ["directml_filter"]
     },
     {
       "id": "cpu_nms",
-      "function": "workflow_nodes.atomic.yolo_ops.apply_nms_node",
+      "function": "src.nodes.yolo_ops.apply_nms_node",
       "inputs": {
         "iou_threshold": 0.45
       },
@@ -229,7 +229,7 @@
     },
     {
       "id": "directml_nms",
-      "function": "workflow_nodes.atomic.yolo_ops.apply_nms_node",
+      "function": "src.nodes.yolo_ops.apply_nms_node",
       "inputs": {
         "iou_threshold": 0.45
       },
@@ -237,7 +237,7 @@
     },
     {
       "id": "cpu_scale",
-      "function": "workflow_nodes.atomic.yolo_ops.scale_boxes_to_original_node",
+      "function": "src.nodes.yolo_ops.scale_boxes_to_original_node",
       "inputs": {
         "input_width": 640,
         "input_height": 640
@@ -246,7 +246,7 @@
     },
     {
       "id": "directml_scale",
-      "function": "workflow_nodes.atomic.yolo_ops.scale_boxes_to_original_node",
+      "function": "src.nodes.yolo_ops.scale_boxes_to_original_node",
       "inputs": {
         "input_width": 640,
         "input_height": 640
@@ -255,19 +255,19 @@
     },
     {
       "id": "cpu_format",
-      "function": "workflow_nodes.atomic.yolo_ops.format_detections_coco_node",
+      "function": "src.nodes.yolo_ops.format_detections_coco_node",
       "inputs": {},
       "dependencies": ["cpu_scale"]
     },
     {
       "id": "directml_format",
-      "function": "workflow_nodes.atomic.yolo_ops.format_detections_coco_node",
+      "function": "src.nodes.yolo_ops.format_detections_coco_node",
       "inputs": {},
       "dependencies": ["directml_scale"]
     },
     {
       "id": "cpu_summary",
-      "function": "workflow_nodes.atomic.yolo_ops.create_detection_summary_node",
+      "function": "src.nodes.yolo_ops.create_detection_summary_node",
       "inputs": {
         "provider": "CPU"
       },
@@ -275,7 +275,7 @@
     },
     {
       "id": "directml_summary",
-      "function": "workflow_nodes.atomic.yolo_ops.create_detection_summary_node",
+      "function": "src.nodes.yolo_ops.create_detection_summary_node",
       "inputs": {
         "provider": "DirectML"
       },
@@ -283,7 +283,7 @@
     },
     {
       "id": "compare_performance",
-      "function": "workflow_nodes.utils.performance_stats.performance_stats_node",
+      "function": "src.nodes.performance_stats.performance_stats_node",
       "inputs": {
         "cpu_result": "$cpu_summary",
         "directml_result": "$directml_summary",
@@ -293,3 +293,4 @@
     }
   ]
 }
+

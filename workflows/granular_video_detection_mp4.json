@@ -9,7 +9,7 @@
   "nodes": [
     {
       "id": "download_model",
-      "function": "workflow_nodes.infrastructure.download_model.download_model_node",
+      "function": "src.nodes.download_model.download_model_node",
       "inputs": {
         "model_name": "yolov8s.onnx",
         "models_dir": "models"
@@ -18,13 +18,13 @@
     },
     {
       "id": "detect_gpu",
-      "function": "workflow_nodes.infrastructure.detect_gpus.detect_gpus_node",
+      "function": "src.nodes.detect_gpus.detect_gpus_node",
       "inputs": {},
       "dependencies": []
     },
     {
       "id": "video_capture",
-      "function": "workflow_nodes.atomic.video_ops.open_video_capture_node",
+      "function": "src.nodes.video_ops.open_video_capture_node",
       "inputs": {
         "source": "videos/istockphoto-1585137173-640_adpp_is.mp4"
       },
@@ -32,7 +32,7 @@
     },
     {
       "id": "directml_session",
-      "function": "workflow_nodes.atomic.onnx_ops.create_onnx_directml_session_node",
+      "function": "src.nodes.onnx_ops.create_onnx_directml_session_node",
       "inputs": {
         "model_path": "models/yolov8s.onnx",
         "device_id": 1
@@ -41,7 +41,7 @@
     },
     {
       "id": "video_loop",
-      "function": "workflow_nodes.video.granular_video_loop.granular_video_loop_node",
+      "function": "src.nodes.granular_video_loop.granular_video_loop_node",
       "inputs": {
         "conf_threshold": 0.25,
         "iou_threshold": 0.45,
@@ -54,3 +54,4 @@
     }
   ]
 }
+
