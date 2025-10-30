@@ -47,7 +47,11 @@ def detect_gpus_node() -> Dict:
                 'directml_device_id': 0,
                 'cuda_device_id': 0,
                 'cuda_available': False,
-                'recommended_gpu': None
+                'recommended_gpu': None,
+                'has_openvino_npu': False,
+                'npu_devices': [],
+                'has_directml': False,
+                'has_cuda': False
             }
         
         logger.info(f"Detected {device_count} NVIDIA GPU(s)")
@@ -119,6 +123,24 @@ def detect_gpus_node() -> Dict:
             directml_device_id = 0
             logger.warning("No discrete GPU detected, using device 0")
         
+        # Check for OpenVINO NPU
+        has_npu = False
+        npu_devices = []
+        try:
+            import openvino as ov
+            core = ov.Core()
+            available_devices = core.available_devices
+            
+            for device in available_devices:
+                if 'NPU' in device:
+                    has_npu = True
+                    npu_devices.append(device)
+                    logger.info(f"  NPU detected: {device}")
+        except ImportError:
+            logger.debug("OpenVINO not available, NPU detection skipped")
+        except Exception as e:
+            logger.debug(f"NPU detection failed: {e}")
+        
         return {
             'gpu_count': len(all_gpus),
             'all_gpus': all_gpus,
@@ -126,7 +148,11 @@ def detect_gpus_node() -> Dict:
             'directml_device_id': directml_device_id,
             'cuda_device_id': cuda_device_id,
             'cuda_available': device_count > 0,
-            'recommended_gpu': discrete_gpus[0] if discrete_gpus else all_gpus[0] if all_gpus else None
+            'recommended_gpu': discrete_gpus[0] if discrete_gpus else all_gpus[0] if all_gpus else None,
+            'has_openvino_npu': has_npu,
+            'npu_devices': npu_devices,
+            'has_directml': len(all_gpus) > 0,
+            'has_cuda': device_count > 0
         }
         
     except ImportError as e:
@@ -139,6 +165,10 @@ def detect_gpus_node() -> Dict:
             'cuda_device_id': 0,
             'cuda_available': False,
             'recommended_gpu': None,
+            'has_openvino_npu': False,
+            'npu_devices': [],
+            'has_directml': False,
+            'has_cuda': False,
             'error': f'py3nvml not available: {str(e)}'
         }
     except Exception as e:
@@ -151,17 +181,10 @@ def detect_gpus_node() -> Dict:
             'cuda_device_id': 0,
             'cuda_available': False,
             'recommended_gpu': None,
-            'error': str(e)
-        }
-
-        return {
-            'gpu_count': 0,
-            'all_gpus': [],
-            'discrete_gpus': [],
-            'directml_device_id': 1,  # Default to 1 (common for discrete GPU)
-            'cuda_device_id': 0,
-            'cuda_available': False,
-            'recommended_gpu': None,
+            'has_openvino_npu': False,
+            'npu_devices': [],
+            'has_directml': False,
+            'has_cuda': False,
             'error': str(e)
         }
 

@@ -1,0 +1,115 @@
+{
+  "workflow": {
+    "name": "Granular CPU Inference",
+    "description": "YOLOv8 inference on CPU using atomic nodes"
+  },
+  "nodes": [
+    {
+      "id": "read_img",
+      "function": "workflow_nodes.atomic.image_ops.read_image_node",
+      "inputs": {
+        "image_path": "input/soccer.jpg"
+      },
+      "dependencies": []
+    },
+    {
+      "id": "resize",
+      "function": "workflow_nodes.atomic.image_ops.resize_image_letterbox_node",
+      "inputs": {
+        "target_width": 640,
+        "target_height": 640
+      },
+      "dependencies": ["read_img"]
+    },
+    {
+      "id": "normalize",
+      "function": "workflow_nodes.atomic.image_ops.normalize_image_node",
+      "inputs": {
+        "scale": 255.0
+      },
+      "dependencies": ["resize"]
+    },
+    {
+      "id": "transpose",
+      "function": "workflow_nodes.atomic.image_ops.hwc_to_chw_node",
+      "inputs": {},
+      "dependencies": ["normalize"]
+    },
+    {
+      "id": "add_batch",
+      "function": "workflow_nodes.atomic.image_ops.add_batch_dimension_node",
+      "inputs": {},
+      "dependencies": ["transpose"]
+    },
+    {
+      "id": "create_session",
+      "function": "workflow_nodes.atomic.onnx_ops.create_onnx_cpu_session_node",
+      "inputs": {
+        "model_path": "models/yolov8s.onnx"
+      },
+      "dependencies": []
+    },
+    {
+      "id": "benchmark",
+      "function": "workflow_nodes.atomic.onnx_ops.run_onnx_inference_benchmark_node",
+      "inputs": {
+        "iterations": 100,
+        "warmup_iterations": 3
+      },
+      "dependencies": ["create_session", "add_batch"]
+    },
+    {
+      "id": "decode_yolo",
+      "function": "workflow_nodes.atomic.yolo_ops.decode_yolo_v8_output_node",
+      "inputs": {
+        "num_classes": 80
+      },
+      "dependencies": ["benchmark"]
+    },
+    {
+      "id": "filter_conf",
+      "function": "workflow_nodes.atomic.yolo_ops.filter_by_confidence_node",
+      "inputs": {
+        "confidence_threshold": 0.25
+      },
+      "dependencies": ["decode_yolo"]
+    },
+    {
+      "id": "convert_boxes",
+      "function": "workflow_nodes.atomic.yolo_ops.convert_cxcywh_to_xyxy_node",
+      "inputs": {},
+      "dependencies": ["filter_conf"]
+    },
+    {
+      "id": "apply_nms",
+      "function": "workflow_nodes.atomic.yolo_ops.apply_nms_node",
+      "inputs": {
+        "iou_threshold": 0.45
+      },
+      "dependencies": ["convert_boxes"]
+    },
+    {
+      "id": "scale_boxes",
+      "function": "workflow_nodes.atomic.yolo_ops.scale_boxes_to_original_node",
+      "inputs": {
+        "input_width": 640,
+        "input_height": 640
+      },
+      "dependencies": ["apply_nms", "read_img", "resize"]
+    },
+    {
+      "id": "format_detections",
+      "function": "workflow_nodes.atomic.yolo_ops.format_detections_coco_node",
+      "inputs": {},
+      "dependencies": ["scale_boxes"]
+    },
+    {
+      "id": "create_summary",
+      "function": "workflow_nodes.atomic.yolo_ops.create_detection_summary_node",
+      "inputs": {
+        "provider": "CPU"
+      },
+      "dependencies": ["format_detections", "benchmark"]
+    }
+  ]
+}

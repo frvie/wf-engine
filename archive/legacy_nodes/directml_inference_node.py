@@ -16,7 +16,9 @@ from workflow_decorator import workflow_node
                dependencies=["onnxruntime-directml", "numpy", "opencv-python", "Pillow"],
                isolation_mode="subprocess")
 def directml_inference_node(model_info: Dict = None, 
+                           model_path: str = None,
                            confidence_threshold: float = 0.25,
+                           iou_threshold: float = 0.45,
                            iterations: int = 10,
                            gpu_info: Dict = None):
     """Run inference using DirectML (isolated from GPU ONNX)"""
@@ -25,13 +27,18 @@ def directml_inference_node(model_info: Dict = None,
     
     logger = logging.getLogger('workflow.inference.directml')
     
-    # Get model path (handle subprocess temp directory)
-    model_path = model_info.get('model_path', 'models/yolov8s.onnx')
-    if 'temp' in os.getcwd().lower() or not os.path.isabs(model_path):
+    # Get model path (handle both model_info dict and direct model_path)
+    if model_info:
+        final_model_path = model_info.get('model_path', 'models/yolov8s.onnx')
+    elif model_path:
+        final_model_path = model_path
+    else:
+        final_model_path = 'models/yolov8s.onnx'
+    
+    if 'temp' in os.getcwd().lower() or not os.path.isabs(final_model_path):
         # Get the project root directory (where this script is located)
-        import sys
         project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        model_path = os.path.join(project_root, 'models', 'yolov8s.onnx')
+        final_model_path = os.path.join(project_root, 'models', 'yolov8s.onnx')
     
     # Detect DirectML GPU availability
     try:
@@ -50,7 +57,7 @@ def directml_inference_node(model_info: Dict = None,
 
     # Create DirectML engine
     engine = SimpleOnnxEngine(
-        model_path=model_path,
+        model_path=final_model_path,
         providers=[('DmlExecutionProvider', {'device_id': device_id}), 'CPUExecutionProvider']
     )
     logger.info(f"Using providers: {engine.session.get_providers()}")
@@ -80,6 +87,24 @@ def directml_inference_node(model_info: Dict = None,
     
     # Post-process
     detections = engine.postprocess_yolo(result['outputs'], orig_w, orig_h, confidence_threshold)
+    
+    # Apply NMS to remove duplicate detections
+    if detections:
+        boxes = [d['bbox'] for d in detections]
+        confidences = [d['confidence'] for d in detections]
+        class_ids = [d['class_id'] for d in detections]
+        
+        boxes, confidences, class_ids = apply_nms(boxes, confidences, class_ids, iou_threshold)
+        
+        # Rebuild detections after NMS
+        detections = []
+        for bbox, conf, cls_id in zip(boxes, confidences, class_ids):
+            detections.append({
+                'bbox': bbox,
+                'confidence': conf,
+                'class_id': cls_id
+            })
+    
     formatted = [
         {
             "bbox": d['bbox'],
@@ -111,7 +136,50 @@ def directml_inference_node(model_info: Dict = None,
         "iterations": iterations,
         "provider": engine.provider,
         "confidence_threshold": confidence_threshold,
+        "iou_threshold": iou_threshold,
         "image_size": (orig_w, orig_h),
         "test_image": test_image,
         "top_detections": [{"class": d['class'], "confidence": d['confidence']} for d in top_3]
     }
+
+
+def apply_nms(boxes, scores, class_ids, iou_threshold):
+    """Non-Maximum Suppression to remove duplicate detections"""
+    import numpy as np
+    
+    if len(boxes) == 0:
+        return [], [], []
+    
+    boxes = np.array(boxes)
+    scores = np.array(scores)
+    class_ids = np.array(class_ids)
+    
+    order = scores.argsort()[::-1]
+    keep = []
+    
+    while len(order) > 0:
+        i = order[0]
+        keep.append(i)
+        
+        if len(order) == 1:
+            break
+        
+        xx1 = np.maximum(boxes[i, 0], boxes[order[1:], 0])
+        yy1 = np.maximum(boxes[i, 1], boxes[order[1:], 1])
+        xx2 = np.minimum(boxes[i, 2], boxes[order[1:], 2])
+        yy2 = np.minimum(boxes[i, 3], boxes[order[1:], 3])
+        
+        w = np.maximum(0.0, xx2 - xx1)
+        h = np.maximum(0.0, yy2 - yy1)
+        intersection = w * h
+        
+        area_i = (boxes[i, 2] - boxes[i, 0]) * (boxes[i, 3] - boxes[i, 1])
+        area_order = (boxes[order[1:], 2] - boxes[order[1:], 0]) * (boxes[order[1:], 3] - boxes[order[1:], 1])
+        union = area_i + area_order - intersection
+        
+        iou = intersection / (union + 1e-6)
+        inds = np.where(iou <= iou_threshold)[0]
+        order = order[inds + 1]
+    
+    return boxes[keep].tolist(), scores[keep].tolist(), class_ids[keep].tolist()
+

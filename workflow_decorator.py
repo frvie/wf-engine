@@ -216,7 +216,8 @@ def workflow_node(
     isolation_mode: str = "auto",  # "auto", "always", "never", "in_process", "none"
     environment: Optional[str] = None,
     performance_tracking: bool = True,
-    log_level: str = "INFO"  # Control logging verbosity
+    log_level: str = "INFO",  # Control logging verbosity - use "SILENT" for high-frequency calls
+    skip_metadata: bool = False  # Skip metadata creation for performance
 ):
     """
     Universal workflow node decorator with hybrid execution capabilities
@@ -236,7 +237,8 @@ def workflow_node(
             - "never"/"in_process"/"none": Always run in main process
         environment: Explicit environment name (optional, auto-generated if not specified)
         performance_tracking: Enable timing and performance metrics
-        log_level: Logging verbosity level
+        log_level: Logging verbosity level ("DEBUG", "INFO", "WARNING", "ERROR", "SILENT")
+        skip_metadata: Skip metadata creation for high-frequency nodes (performance optimization)
         
     Example:
         @workflow_node(node_id="directml_inference", 
@@ -245,6 +247,12 @@ def workflow_node(
             # Environment auto-created with specified dependencies
             import onnxruntime as ort
             return {"result": "success"}
+            
+        # For high-frequency atomic nodes:
+        @workflow_node(node_id="resize", log_level="SILENT", skip_metadata=True)
+        def fast_resize(image: np.ndarray) -> Dict[str, Any]:
+            # No logging or metadata overhead for performance
+            return {"image": resized}
     """
     def decorator(func: Callable) -> Callable:
         # Get function signature for parameter filtering
@@ -256,8 +264,8 @@ def workflow_node(
             logger = get_inference_logger(node_id)
             start_time = time.perf_counter() if performance_tracking else None
             
-            # Log node execution start
-            if log_level in ["DEBUG", "INFO"]:
+            # Log node execution start (skip if SILENT mode)
+            if log_level not in ["SILENT"] and log_level in ["DEBUG", "INFO"]:
                 logger.info(f"Starting {node_id}")
                 if log_level == "DEBUG":
                     logger.debug(f"Input args: {len(args)} positional, "
@@ -315,7 +323,7 @@ def workflow_node(
                     result = func(*args, **kwargs)
                 
                 # Add metadata and logging if result is a dict
-                if isinstance(result, dict):
+                if isinstance(result, dict) and not skip_metadata:
                     if performance_tracking and start_time:
                         execution_time = time.perf_counter() - start_time
                         result['_node_metadata'] = {
@@ -326,15 +334,16 @@ def workflow_node(
                             'cache_enabled': cache_models
                         }
                         
-                        # Log completion with performance info
-                        if execution_time > 1.0:  # Log slow operations prominently
-                            logger.warning(f"⏱️  {node_id} completed in {execution_time:.3f}s (slow)")
-                        else:
-                            logger.info(f"✅ {node_id} completed in {execution_time:.3f}s")
+                        # Log completion with performance info (skip if SILENT mode)
+                        if log_level != "SILENT":
+                            if execution_time > 1.0:  # Log slow operations prominently
+                                logger.warning(f"⏱️  {node_id} completed in {execution_time:.3f}s (slow)")
+                            else:
+                                logger.info(f"✅ {node_id} completed in {execution_time:.3f}s")
                         
                         if log_level == "DEBUG":
                             logger.debug(f"📊 Performance: {execution_time*1000:.1f}ms")
-                    else:
+                    elif log_level != "SILENT":
                         logger.info(f"{node_id} completed successfully")
                 
                 return result
@@ -382,10 +391,21 @@ def _check_dependencies(dependencies: List[str], logger) -> List[str]:
     """Check if dependencies are available, return list of missing ones"""
     import importlib.util
     
+    # Map package names to import names (package-name -> import_name)
+    PACKAGE_IMPORT_MAP = {
+        'opencv-python': 'cv2',
+        'opencv-python-headless': 'cv2',
+        'pillow': 'PIL',
+        'scikit-learn': 'sklearn',
+        'scikit-image': 'skimage',
+    }
+    
     missing = []
     for dep in dependencies:
         try:
-            spec = importlib.util.find_spec(dep.replace('-', '_'))
+            # Get the actual import name (either from map or converted package name)
+            import_name = PACKAGE_IMPORT_MAP.get(dep, dep.replace('-', '_'))
+            spec = importlib.util.find_spec(import_name)
             if spec is None:
                 missing.append(dep)
         except ImportError:

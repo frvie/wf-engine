@@ -18,6 +18,7 @@ from workflow_decorator import workflow_node
 def npu_inference_node(model_session: str = None, 
                        model_info: Dict = None, 
                        confidence_threshold: float = 0.25,
+                       iou_threshold: float = 0.45,
                        iterations: int = 10, 
                        device: str = "NPU",
                        image_data: List = None):
@@ -144,7 +145,26 @@ def npu_inference_node(model_session: str = None,
                     'class_id': class_id
                 })
 
-        logger.info(f"Post-processing extracted {len(detections)} detections")
+        logger.info(f"Post-processing extracted {len(detections)} detections before NMS")
+        
+        # Apply NMS to remove duplicate detections
+        if detections:
+            boxes = [det['bbox'] for det in detections]
+            confidences = [det['confidence'] for det in detections]
+            class_ids = [det['class_id'] for det in detections]
+            
+            boxes, confidences, class_ids = apply_nms(boxes, confidences, class_ids, iou_threshold)
+            
+            # Rebuild detections after NMS
+            detections = []
+            for bbox, conf, cls_id in zip(boxes, confidences, class_ids):
+                detections.append({
+                    'bbox': bbox,
+                    'confidence': conf,
+                    'class_id': cls_id
+                })
+        
+        logger.info(f"Post-processing: {len(detections)} detections after NMS")
         avg_time = sum(inference_times) / len(inference_times)
         avg_inference_time = avg_time * 1000
         fps = 1000.0 / avg_inference_time if avg_inference_time > 0 else 0
@@ -176,9 +196,51 @@ def npu_inference_node(model_session: str = None,
             "iterations": iterations,
             "provider": f"OpenVINO-{ov_device}",
             "confidence_threshold": confidence_threshold,
+            "iou_threshold": iou_threshold,
             "image_size": (orig_w, orig_h),
             "test_image": test_image,
             "actual_device": ov_device
         }
     except Exception as e:
         return {"error": f"OpenVINO {device} inference failed: {str(e)}", "skipped": True}
+
+
+def apply_nms(boxes, scores, class_ids, iou_threshold):
+    """Non-Maximum Suppression to remove duplicate detections"""
+    import numpy as np
+    
+    if len(boxes) == 0:
+        return [], [], []
+    
+    boxes = np.array(boxes)
+    scores = np.array(scores)
+    class_ids = np.array(class_ids)
+    
+    order = scores.argsort()[::-1]
+    keep = []
+    
+    while len(order) > 0:
+        i = order[0]
+        keep.append(i)
+        
+        if len(order) == 1:
+            break
+        
+        xx1 = np.maximum(boxes[i, 0], boxes[order[1:], 0])
+        yy1 = np.maximum(boxes[i, 1], boxes[order[1:], 1])
+        xx2 = np.minimum(boxes[i, 2], boxes[order[1:], 2])
+        yy2 = np.minimum(boxes[i, 3], boxes[order[1:], 3])
+        
+        w = np.maximum(0.0, xx2 - xx1)
+        h = np.maximum(0.0, yy2 - yy1)
+        intersection = w * h
+        
+        area_i = (boxes[i, 2] - boxes[i, 0]) * (boxes[i, 3] - boxes[i, 1])
+        area_order = (boxes[order[1:], 2] - boxes[order[1:], 0]) * (boxes[order[1:], 3] - boxes[order[1:], 1])
+        union = area_i + area_order - intersection
+        
+        iou = intersection / (union + 1e-6)
+        inds = np.where(iou <= iou_threshold)[0]
+        order = order[inds + 1]
+    
+    return boxes[keep].tolist(), scores[keep].tolist(), class_ids[keep].tolist()

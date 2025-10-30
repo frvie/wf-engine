@@ -9,7 +9,6 @@ import logging
 from typing import Dict, Optional
 from workflow_decorator import workflow_node
 
-print("[MODULE LOAD] performance_stats_node module loaded!")
 
 @workflow_node("performance_stats", isolation_mode="auto")
 def performance_stats_node(directml_result: Optional[Dict] = None, 
@@ -17,12 +16,6 @@ def performance_stats_node(directml_result: Optional[Dict] = None,
                           npu_result: Optional[Dict] = None, 
                           cpu_result: Optional[Dict] = None):
     """Aggregate and compare performance across all backends"""
-    print(f"[PERF_STATS] Received CPU: {cpu_result is not None}, DirectML: {directml_result is not None}")
-    print(f"[PERF_STATS] CPU keys: {list(cpu_result.keys()) if cpu_result else 'None'}")
-    print(f"[PERF_STATS] DirectML keys: {list(directml_result.keys()) if directml_result else 'None'}")
-    
-    logger = logging.getLogger('workflow.inference.performance_stats')
-    
     try:
         results = []
         
@@ -38,27 +31,36 @@ def performance_stats_node(directml_result: Optional[Dict] = None,
                 if "performance" in result and isinstance(result["performance"], dict):
                     perf = result["performance"]
                     inference_time = perf.get("inference_time_ms", perf.get("avg_time_ms", 0))
-                    detections = result.get("detections", [])
+                    fps_from_result = perf.get("fps", 0)
                     iterations = perf.get("iterations", 0)
                     total_time = perf.get("total_time_ms", inference_time)
                     provider = perf.get("provider", backend_name)
+                    num_detections = result.get("num_detections", 0)
                 # Handle flat dict (legacy format)
                 elif "inference_time_ms" in result:
                     inference_time = result["inference_time_ms"]
-                    detections = result.get("detections", [])
+                    fps_from_result = result.get("fps", 0)
                     iterations = result.get("iterations", 0)
                     total_time = result.get("total_time_ms", inference_time)
                     provider = result.get("provider", backend_name)
+                    # Handle both detection count (int) and detection list
+                    detections = result.get("detections", [])
+                    if isinstance(detections, int):
+                        num_detections = detections
+                    elif isinstance(detections, list):
+                        num_detections = len(detections)
+                    else:
+                        num_detections = 0
                 else:
                     continue
                     
                 results.append({
                     "backend": backend_name,
                     "avg_inference_time_ms": inference_time,
+                    "fps": fps_from_result,
                     "total_time_ms": total_time,
                     "iterations": iterations,
-                    "detections_count": len(detections),
-                    "detections": detections,
+                    "detections_count": num_detections,
                     "provider": provider
                 })
         
@@ -72,55 +74,32 @@ def performance_stats_node(directml_result: Optional[Dict] = None,
             baseline_time = cpu_result["avg_inference_time_ms"] if cpu_result else results[0]["avg_inference_time_ms"]
             
             logger = logging.getLogger('workflow.inference.performance_stats')
-            logger.info("=" * 70)
-            logger.info(f"📊 PERFORMANCE COMPARISON ({len(results)} backends, baseline: CPU)")
-            logger.info("=" * 70)
+            logger.info("=" * 80)
+            logger.info(f"📊 PERFORMANCE COMPARISON ({len(results)} backends tested)")
+            logger.info("=" * 80)
             
             for i, result in enumerate(results):
-                result["performance_ratio"] = (result["avg_inference_time_ms"] / 
-                                             baseline_time)
-                result["speedup"] = (f"{baseline_time / result['avg_inference_time_ms']:.2f}x")
-                fps = (1000.0 / result["avg_inference_time_ms"] 
-                      if result["avg_inference_time_ms"] > 0 else 0)
-                result["fps"] = fps  # Store FPS in result dict
+                result["performance_ratio"] = (result["avg_inference_time_ms"] / baseline_time)
+                speedup = baseline_time / result['avg_inference_time_ms']
+                result["speedup"] = f"{speedup:.2f}x"
                 
-                rank_map = {0: "1st", 1: "2nd", 2: "3rd"}
-                rank = rank_map.get(i, f"{i+1}th")
+                # Use FPS from result if available, otherwise calculate
+                fps = result.get("fps", 0)
+                if fps == 0 and result["avg_inference_time_ms"] > 0:
+                    fps = 1000.0 / result["avg_inference_time_ms"]
+                result["fps"] = fps
+                
+                rank_map = {0: "🥇 1st", 1: "🥈 2nd", 2: "🥉 3rd"}
+                rank = rank_map.get(i, f"  {i+1}th")
                 logger.info(
-                    f"  {rank} {result['backend']}: "
-                    f"{result['avg_inference_time_ms']:.1f}ms "
-                    f"({fps:.1f} FPS) - {result['speedup']}"
+                    f"{rank} {result['backend']:15s}: "
+                    f"{result['avg_inference_time_ms']:6.1f}ms | "
+                    f"{fps:6.1f} FPS | "
+                    f"Speedup: {result['speedup']:>6s} | "
+                    f"{result['detections_count']} detections"
                 )
             
-            # Display top detections from each backend
-            logger.info("\nDetection Results:")
-            for result in results:
-                detections = result.get("detections", [])
-                if detections:
-                    # Sort by confidence and get top 5
-                    top_dets = sorted(
-                        detections,
-                        key=lambda x: x['confidence'],
-                        reverse=True
-                    )[:5]
-                    
-                    logger.info(
-                        f"\n  {result['backend']} - "
-                        f"Top {len(top_dets)} of "
-                        f"{result['detections_count']} detections:"
-                    )
-                    for idx, det in enumerate(top_dets, 1):
-                        bbox = det['bbox']
-                        logger.info(
-                            f"    {idx}. {det['class']} "
-                            f"(conf: {det['confidence']:.3f}) "
-                            f"bbox: [{bbox[0]:.0f}, {bbox[1]:.0f}, "
-                            f"{bbox[2]:.0f}, {bbox[3]:.0f}]"
-                        )
-                else:
-                    logger.info(
-                        f"\n  {result['backend']} - No detections"
-                    )
+            logger.info("=" * 80)
         
         return {
             "backend_results": results,

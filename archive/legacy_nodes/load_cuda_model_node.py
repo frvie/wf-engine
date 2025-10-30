@@ -4,7 +4,6 @@ CUDA Model Loader Node
 Loads ONNX models with CUDA provider.
 """
 
-from typing import Dict
 from workflow_decorator import workflow_node
 
 

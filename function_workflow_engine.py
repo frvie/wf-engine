@@ -102,12 +102,16 @@ class FunctionWorkflowEngine:
         import inspect
         loaded_count = 0
         
-        for py_file in nodes_dir.glob("*.py"):
+        # Scan recursively for all Python files in workflow_nodes
+        for py_file in nodes_dir.rglob("*.py"):
             if py_file.name == '__init__.py':
                 continue
                 
             try:
-                module_name = f"workflow_nodes.{py_file.stem}"
+                # Convert path to module name (e.g., workflow_nodes/atomic/onnx_ops.py -> workflow_nodes.atomic.onnx_ops)
+                relative_path = py_file.relative_to(nodes_dir.parent)
+                module_name = str(relative_path.with_suffix('')).replace(os.sep, '.')
+                
                 module = importlib.import_module(module_name)
                 
                 for name, obj in inspect.getmembers(module):
@@ -119,9 +123,11 @@ class FunctionWorkflowEngine:
                                 'function': obj,
                                 'node_id': obj.node_id,
                                 'dependencies': getattr(obj, 'dependencies', []),
-                                'environment': getattr(obj, 'environment', None)
+                                'environment': getattr(obj, 'environment', None),
+                                'isolation_mode': getattr(obj, 'isolation_mode', 'auto')
                             }
                             loaded_count += 1
+                            self.logger.debug(f"Loaded {full_function_name} with isolation_mode={getattr(obj, 'isolation_mode', 'auto')}")
                             
             except Exception as e:
                 self.logger.warning(f"Failed to load {py_file.name}: {e}")
@@ -137,16 +143,62 @@ class FunctionWorkflowEngine:
     
     def _prepare_inputs(self, node: Dict) -> Dict:
         """Prepare node inputs by merging static inputs with dependency results"""
+        import inspect
+        import importlib
+        
         inputs = node.get('inputs', {}).copy()
+        function_name = node.get('function')
         
-        # ONLY auto-inject model_info (common pattern for model loaders → inference nodes)
-        AUTO_INJECT_KEYS = {'model_info'}
+        # Get function signature to filter parameters
+        func_params = None
+        if function_name:
+            func = None
+            
+            # Try pre-loaded function first
+            if function_name in self.discovered_nodes:
+                func = self.discovered_nodes[function_name]['function']
+            else:
+                # Dynamically import to get signature
+                try:
+                    module_name, func_name = function_name.rsplit('.', 1)
+                    module = importlib.import_module(module_name)
+                    func = getattr(module, func_name)
+                except Exception as e:
+                    self.logger.debug(f"Could not import {function_name} for signature inspection: {e}")
+            
+            # Extract parameters from function signature
+            if func:
+                try:
+                    sig = inspect.signature(func)
+                    # Get parameter names (excluding 'self' if it's a method)
+                    func_params = set(sig.parameters.keys())
+                    self.logger.debug(f"Node {node['id']} accepts parameters: {func_params}")
+                except Exception as e:
+                    self.logger.debug(f"Could not inspect signature of {function_name}: {e}")
         
-        for dep_id in node.get('depends_on', []):
-            if dep_id in self.results and isinstance(self.results[dep_id], dict):
-                for key, value in self.results[dep_id].items():
-                    if key in AUTO_INJECT_KEYS and key not in inputs:
-                        inputs[key] = value
+        # Auto-inject outputs from dependencies (for atomic node composition)
+        # Only inject parameters that the function actually accepts
+        # Support both "depends_on" and "dependencies" field names
+        deps = node.get('depends_on', []) or node.get('dependencies', [])
+        
+        for dep_id in deps:
+            if dep_id in self.results:
+                dep_result = self.results[dep_id]
+                if isinstance(dep_result, dict):
+                    for key, value in dep_result.items():
+                        # Skip internal metadata keys
+                        if key.startswith('_'):
+                            continue
+                        
+                        # Only inject if:
+                        # 1. Not already in static inputs (static takes precedence)
+                        # 2. Function accepts this parameter (or we don't know signature)
+                        # 3. Not an error/status key from failed nodes
+                        if (key not in inputs and 
+                            (func_params is None or key in func_params) and
+                            key not in {'error', 'status'}):
+                            inputs[key] = value
+                            self.logger.debug(f"Auto-injected '{key}' from {dep_id}")
         
         # Resolve $ references
         for key, value in list(inputs.items()):
@@ -216,6 +268,7 @@ class FunctionWorkflowEngine:
         # Check if isolation needed
         if self.environment_manager and node_metadata:
             node_type = function_name.split('.')[-1]
+            
             env_info = self.environment_manager.get_environment_for_node(
                 node_type, 
                 node, 
@@ -224,12 +277,12 @@ class FunctionWorkflowEngine:
             )
             
             if env_info and env_info.get('is_isolated'):
-                self.logger.info(f"Executing {node['id']} in {env_info['env_name']}")
+                self.logger.info(f"Executing {node['id']} in isolated environment: {env_info['env_name']}")
                 
                 try:
                     return self._execute_in_environment(function_name, inputs, env_info, node['id'])
                 except Exception as e:
-                    self.logger.warning(f"Isolated execution failed: {e}")
+                    self.logger.warning(f"Isolated execution failed, falling back to local: {e}")
         
         # Try pre-loaded function first
         if function_name in self.discovered_nodes:
@@ -512,8 +565,11 @@ except Exception as e:
         workflow_name = self.workflow_config.get('name', 'Function Workflow')
         self.logger.info(f"Starting {workflow_name} ({len(self.nodes)} nodes)")
         
-        # Build dependency graph
-        dependency_graph = {node['id']: node.get('depends_on', []) for node in self.nodes}
+        # Build dependency graph - support both "depends_on" and "dependencies"
+        dependency_graph = {
+            node['id']: node.get('depends_on', []) or node.get('dependencies', [])
+            for node in self.nodes
+        }
         max_parallel = self.workflow_config.get('settings', {}).get('max_parallel_nodes', 4)
         
         completed = set()

@@ -1,0 +1,64 @@
+{
+  "workflow": {
+    "name": "Auto-Generated: object_detection",
+    "description": "Autonomous workflow for object_detection on istockphoto-1585137173-640_adpp_is.mp4",
+    "version": "1.0",
+    "generated_by": "WorkflowComposer",
+    "generated_at": "2025-10-29T15:21:20.372481",
+    "goal": {
+      "task": "object_detection",
+      "input_type": "istockphoto-1585137173-640_adpp_is.mp4",
+      "output_type": "display",
+      "performance_target": 20.0,
+      "hardware_preference": "auto",
+      "quality_over_speed": false
+    },
+    "strategy": "granular",
+    "optimized_parameters": {
+      "conf_threshold": 0.25,
+      "iou_threshold": 0.7,
+      "batch_size": 1
+    }
+  },
+  "nodes": [
+    {
+      "id": "detect_hardware",
+      "function": "workflow_nodes.infrastructure.detect_gpus.detect_gpus_node",
+      "inputs": {}
+    },
+    {
+      "id": "download_model",
+      "function": "workflow_nodes.infrastructure.download_model.download_model_node",
+      "depends_on": [],
+      "inputs": {
+        "model_name": "yolov8s",
+        "target_format": "onnx"
+      }
+    },
+    {
+      "id": "process_video",
+      "function": "workflow_nodes.video.granular_video_loop.granular_video_loop_node",
+      "depends_on": [
+        "download_model"
+      ],
+      "inputs": {
+        "video_path": "istockphoto-1585137173-640_adpp_is.mp4",
+        "conf_threshold": 0.25,
+        "iou_threshold": 0.7,
+        "display_fps": true,
+        "save_output": false,
+        "batch_size": 1
+      }
+    },
+    {
+      "id": "performance_stats",
+      "function": "workflow_nodes.utils.performance_stats.performance_stats_node",
+      "depends_on": [
+        "process_video"
+      ],
+      "inputs": {
+        "video_result": "$process_video"
+      }
+    }
+  ]
+}

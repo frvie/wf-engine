@@ -1,0 +1,65 @@
+{
+  "workflow": {
+    "name": "Test Granular Image Pipeline",
+    "description": "Test atomic image processing nodes without ONNX dependencies"
+  },
+  "nodes": [
+    {
+      "id": "read_img",
+      "function": "workflow_nodes.atomic.image_ops.read_image_node",
+      "inputs": {
+        "image_path": "input/soccer.jpg"
+      },
+      "dependencies": []
+    },
+    {
+      "id": "get_shape",
+      "function": "workflow_nodes.atomic.image_ops.get_image_shape_node",
+      "inputs": {},
+      "dependencies": ["read_img"]
+    },
+    {
+      "id": "resize",
+      "function": "workflow_nodes.atomic.image_ops.resize_image_letterbox_node",
+      "inputs": {
+        "target_width": 640,
+        "target_height": 640
+      },
+      "dependencies": ["read_img"]
+    },
+    {
+      "id": "bgr_to_rgb",
+      "function": "workflow_nodes.atomic.image_ops.bgr_to_rgb_node",
+      "inputs": {},
+      "dependencies": ["resize"]
+    },
+    {
+      "id": "normalize",
+      "function": "workflow_nodes.atomic.image_ops.normalize_image_node",
+      "inputs": {
+        "scale": 255.0
+      },
+      "dependencies": ["bgr_to_rgb"]
+    },
+    {
+      "id": "transpose",
+      "function": "workflow_nodes.atomic.image_ops.hwc_to_chw_node",
+      "inputs": {},
+      "dependencies": ["normalize"]
+    },
+    {
+      "id": "add_batch",
+      "function": "workflow_nodes.atomic.image_ops.add_batch_dimension_node",
+      "inputs": {},
+      "dependencies": ["transpose"]
+    },
+    {
+      "id": "save_output",
+      "function": "workflow_nodes.atomic.image_ops.save_image_node",
+      "inputs": {
+        "output_path": "output/test_processed.jpg"
+      },
+      "dependencies": ["bgr_to_rgb"]
+    }
+  ]
+}

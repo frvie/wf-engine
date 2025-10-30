@@ -1,0 +1,295 @@
+{
+  "workflow": {
+    "name": "Granular Multi-Backend YOLO Inference (CPU + NPU + DirectML)",
+    "description": "Parallel inference comparison using atomic, composable nodes with DirectML isolation",
+    "settings": {
+      "max_parallel_nodes": 8
+    }
+  },
+  "nodes": [
+    {
+      "id": "download_model",
+      "function": "workflow_nodes.infrastructure.download_model.download_model_node",
+      "dependencies": [],
+      "inputs": {
+        "model_name": "yolov8s.onnx",
+        "models_dir": "models"
+      }
+    },
+    {
+      "id": "read_img",
+      "function": "workflow_nodes.atomic.image_ops.read_image_node",
+      "inputs": {
+        "image_path": "input/soccer.jpg"
+      },
+      "dependencies": []
+    },
+    {
+      "id": "resize",
+      "function": "workflow_nodes.atomic.image_ops.resize_image_letterbox_node",
+      "inputs": {
+        "target_width": 640,
+        "target_height": 640
+      },
+      "dependencies": ["read_img"]
+    },
+    {
+      "id": "normalize",
+      "function": "workflow_nodes.atomic.image_ops.normalize_image_node",
+      "inputs": {
+        "scale": 255.0
+      },
+      "dependencies": ["resize"]
+    },
+    {
+      "id": "transpose",
+      "function": "workflow_nodes.atomic.image_ops.hwc_to_chw_node",
+      "inputs": {},
+      "dependencies": ["normalize"]
+    },
+    {
+      "id": "add_batch",
+      "function": "workflow_nodes.atomic.image_ops.add_batch_dimension_node",
+      "inputs": {},
+      "dependencies": ["transpose"]
+    },
+    {
+      "id": "cpu_session",
+      "function": "workflow_nodes.atomic.onnx_ops.create_onnx_cpu_session_node",
+      "inputs": {
+        "model_path": "models/yolov8s.onnx"
+      },
+      "dependencies": ["download_model"]
+    },
+    {
+      "id": "npu_session",
+      "function": "workflow_nodes.model_loaders.openvino_loader.load_openvino_model_node",
+      "inputs": {
+        "model_path": "models/yolov8s.onnx",
+        "device": "NPU"
+      },
+      "dependencies": ["download_model"]
+    },
+    {
+      "id": "directml_session",
+      "function": "workflow_nodes.atomic.onnx_ops.create_onnx_directml_session_node",
+      "inputs": {
+        "model_path": "models/yolov8s.onnx",
+        "device_id": "$detect_gpu.directml_device_id"
+      },
+      "dependencies": ["download_model", "detect_gpu"]
+    },
+    {
+      "id": "cpu_benchmark",
+      "function": "workflow_nodes.atomic.onnx_ops.run_onnx_inference_benchmark_node",
+      "inputs": {
+        "iterations": 5,
+        "warmup_iterations": 1
+      },
+      "dependencies": ["cpu_session", "add_batch"]
+    },
+    {
+      "id": "directml_benchmark",
+      "function": "workflow_nodes.atomic.onnx_ops.run_onnx_inference_benchmark_node",
+      "inputs": {
+        "iterations": 5,
+        "warmup_iterations": 1
+      },
+      "dependencies": ["directml_session", "add_batch"]
+    },
+    {
+      "id": "npu_benchmark",
+      "function": "workflow_nodes.model_loaders.openvino_loader.run_openvino_inference_node",
+      "inputs": {
+        "cache_key": "$npu_session.cache_key",
+        "input_tensor": "$add_batch.image",
+        "iterations": 5,
+        "warmup_iterations": 1
+      },
+      "dependencies": ["npu_session", "add_batch"]
+    },
+    {
+      "id": "detect_gpu",
+      "function": "workflow_nodes.infrastructure.detect_gpus.detect_gpus_node",
+      "inputs": {},
+      "dependencies": []
+    },
+    {
+      "id": "npu_decode",
+      "function": "workflow_nodes.atomic.yolo_ops.decode_yolo_v8_output_node",
+      "inputs": {
+        "outputs": "$npu_benchmark.outputs",
+        "num_classes": 80
+      },
+      "dependencies": ["npu_benchmark"]
+    },
+    {
+      "id": "npu_filter",
+      "function": "workflow_nodes.atomic.yolo_ops.filter_by_confidence_node",
+      "inputs": {
+        "conf_threshold": 0.25
+      },
+      "dependencies": ["npu_decode"]
+    },
+    {
+      "id": "npu_convert",
+      "function": "workflow_nodes.atomic.yolo_ops.convert_cxcywh_to_xyxy_node",
+      "inputs": {},
+      "dependencies": ["npu_filter"]
+    },
+    {
+      "id": "npu_nms",
+      "function": "workflow_nodes.atomic.yolo_ops.apply_nms_node",
+      "inputs": {
+        "iou_threshold": 0.45
+      },
+      "dependencies": ["npu_convert"]
+    },
+    {
+      "id": "npu_scale",
+      "function": "workflow_nodes.atomic.yolo_ops.scale_boxes_to_original_node",
+      "inputs": {
+        "boxes": "$npu_nms.boxes",
+        "scores": "$npu_nms.scores",
+        "class_ids": "$npu_nms.class_ids",
+        "input_width": 640,
+        "input_height": 640
+      },
+      "dependencies": ["npu_nms", "read_img", "resize"]
+    },
+    {
+      "id": "npu_format",
+      "function": "workflow_nodes.atomic.yolo_ops.format_detections_coco_node",
+      "inputs": {
+        "boxes": "$npu_scale.boxes",
+        "scores": "$npu_scale.scores",
+        "class_ids": "$npu_scale.class_ids"
+      },
+      "dependencies": ["npu_scale"]
+    },
+    {
+      "id": "npu_summary",
+      "function": "workflow_nodes.atomic.yolo_ops.create_detection_summary_node",
+      "inputs": {
+        "provider": "OpenVINO NPU"
+      },
+      "dependencies": ["npu_format", "npu_benchmark"]
+    },
+    {
+      "id": "cpu_decode",
+      "function": "workflow_nodes.atomic.yolo_ops.decode_yolo_v8_output_node",
+      "inputs": {
+        "num_classes": 80
+      },
+      "dependencies": ["cpu_benchmark"]
+    },
+    {
+      "id": "directml_decode",
+      "function": "workflow_nodes.atomic.yolo_ops.decode_yolo_v8_output_node",
+      "inputs": {
+        "num_classes": 80
+      },
+      "dependencies": ["directml_benchmark"]
+    },
+    {
+      "id": "cpu_filter",
+      "function": "workflow_nodes.atomic.yolo_ops.filter_by_confidence_node",
+      "inputs": {
+        "conf_threshold": 0.25
+      },
+      "dependencies": ["cpu_decode"]
+    },
+    {
+      "id": "directml_filter",
+      "function": "workflow_nodes.atomic.yolo_ops.filter_by_confidence_node",
+      "inputs": {
+        "conf_threshold": 0.25
+      },
+      "dependencies": ["directml_decode"]
+    },
+    {
+      "id": "cpu_convert",
+      "function": "workflow_nodes.atomic.yolo_ops.convert_cxcywh_to_xyxy_node",
+      "inputs": {},
+      "dependencies": ["cpu_filter"]
+    },
+    {
+      "id": "directml_convert",
+      "function": "workflow_nodes.atomic.yolo_ops.convert_cxcywh_to_xyxy_node",
+      "inputs": {},
+      "dependencies": ["directml_filter"]
+    },
+    {
+      "id": "cpu_nms",
+      "function": "workflow_nodes.atomic.yolo_ops.apply_nms_node",
+      "inputs": {
+        "iou_threshold": 0.45
+      },
+      "dependencies": ["cpu_convert"]
+    },
+    {
+      "id": "directml_nms",
+      "function": "workflow_nodes.atomic.yolo_ops.apply_nms_node",
+      "inputs": {
+        "iou_threshold": 0.45
+      },
+      "dependencies": ["directml_convert"]
+    },
+    {
+      "id": "cpu_scale",
+      "function": "workflow_nodes.atomic.yolo_ops.scale_boxes_to_original_node",
+      "inputs": {
+        "input_width": 640,
+        "input_height": 640
+      },
+      "dependencies": ["cpu_nms", "read_img", "resize"]
+    },
+    {
+      "id": "directml_scale",
+      "function": "workflow_nodes.atomic.yolo_ops.scale_boxes_to_original_node",
+      "inputs": {
+        "input_width": 640,
+        "input_height": 640
+      },
+      "dependencies": ["directml_nms", "read_img", "resize"]
+    },
+    {
+      "id": "cpu_format",
+      "function": "workflow_nodes.atomic.yolo_ops.format_detections_coco_node",
+      "inputs": {},
+      "dependencies": ["cpu_scale"]
+    },
+    {
+      "id": "directml_format",
+      "function": "workflow_nodes.atomic.yolo_ops.format_detections_coco_node",
+      "inputs": {},
+      "dependencies": ["directml_scale"]
+    },
+    {
+      "id": "cpu_summary",
+      "function": "workflow_nodes.atomic.yolo_ops.create_detection_summary_node",
+      "inputs": {
+        "provider": "CPU"
+      },
+      "dependencies": ["cpu_format", "cpu_benchmark"]
+    },
+    {
+      "id": "directml_summary",
+      "function": "workflow_nodes.atomic.yolo_ops.create_detection_summary_node",
+      "inputs": {
+        "provider": "DirectML"
+      },
+      "dependencies": ["directml_format", "directml_benchmark"]
+    },
+    {
+      "id": "compare_performance",
+      "function": "workflow_nodes.utils.performance_stats.performance_stats_node",
+      "inputs": {
+        "cpu_result": "$cpu_summary",
+        "directml_result": "$directml_summary",
+        "npu_result": "$npu_summary"
+      },
+      "dependencies": ["cpu_summary", "directml_summary", "npu_summary"]
+    }
+  ]
+}
