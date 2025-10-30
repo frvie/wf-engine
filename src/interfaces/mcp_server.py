@@ -11,7 +11,27 @@ Enhanced with:
 
 import json
 import logging
+import sys
 from pathlib import Path
+
+# Prevent auto-initialization of logging that might interfere with MCP
+import os
+os.environ["NO_AUTO_INIT"] = "1"
+
+# Configure logging to stderr ONLY to avoid interfering with MCP JSON protocol
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s | %(name)s | %(levelname)s | %(message)s',
+    datefmt='%H:%M:%S',
+    stream=sys.stderr,  # Critical: send all logs to stderr, not stdout
+    force=True  # Override any existing configuration
+)
+
+# Ensure root logger only uses stderr
+root = logging.getLogger()
+for handler in root.handlers[:]:
+    if hasattr(handler, 'stream') and handler.stream == sys.stdout:
+        root.removeHandler(handler)
 
 # MCP Server imports
 from mcp.server import Server
