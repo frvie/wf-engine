@@ -19,10 +19,10 @@ from mcp.server.stdio import stdio_server
 from mcp.types import Tool, TextContent
 
 # Workflow engine imports
-from function_workflow_engine import run_function_workflow
-from agentic_integration import AgenticWorkflowEngine
-from workflow_agent import AgenticWorkflowSystem, WorkflowGoal
-from workflow_agent_llm import LLMWorkflowComposer, verify_ollama_connection
+from src.core.engine import FunctionWorkflowEngine
+from src.agentic.agent import AgenticWorkflowSystem
+# Lazy import for LLM features (optional dependency)
+# from src.agentic.agent_llm import LLMWorkflowComposer, verify_ollama_connection
 import importlib.util
 import os
 
@@ -172,15 +172,15 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
             
             # Check if it's a file path or JSON string
             if os.path.exists(workflow_input):
-                results = run_function_workflow(workflow_input)
+                with open(workflow_input, 'r') as f:
+                    workflow_data = json.load(f)
             else:
                 # Try to parse as JSON string
                 workflow_data = json.loads(workflow_input)
-                # Save to temp file
-                temp_path = "temp_workflow.json"
-                with open(temp_path, 'w') as f:
-                    json.dump(workflow_data, f, indent=2)
-                results = run_function_workflow(temp_path)
+            
+            # Execute using FunctionWorkflowEngine
+            engine = FunctionWorkflowEngine(workflow_data)
+            results = engine.execute()
             
             return [TextContent(
                 type="text",
@@ -309,10 +309,15 @@ def _detect_available_devices() -> dict:
 
 def _list_available_nodes() -> dict:
     """List all available workflow nodes"""
-    nodes_dir = Path("workflow_nodes")
+    nodes_dir = Path("src/nodes")
     nodes = {}
     
-    for py_file in nodes_dir.glob("*_node.py"):
+    # Recursively search for all .py files in nodes directory
+    for py_file in nodes_dir.rglob("*.py"):
+        # Skip __init__.py and __pycache__
+        if py_file.name.startswith("__"):
+            continue
+            
         module_name = py_file.stem
         try:
             spec = importlib.util.spec_from_file_location(module_name, py_file)
@@ -320,15 +325,17 @@ def _list_available_nodes() -> dict:
                 module = importlib.util.module_from_spec(spec)
                 spec.loader.exec_module(module)
                 
-                # Find decorated functions
+                # Find decorated functions (workflow_node decorator)
                 for attr_name in dir(module):
                     attr = getattr(module, attr_name)
-                    if callable(attr) and hasattr(attr, '__name__'):
-                        nodes[attr.__name__] = {
+                    if callable(attr) and hasattr(attr, 'node_name'):
+                        # This is a workflow_node decorated function
+                        nodes[attr.node_name] = {
+                            "function": attr_name,
                             "module": module_name,
-                            "file": str(py_file),
+                            "file": str(py_file.relative_to(Path.cwd())),
                             "dependencies": getattr(attr, 'dependencies', []),
-                            "isolation_mode": getattr(attr, 'isolation_mode', 'auto')
+                            "isolation_mode": getattr(attr, 'isolation_mode', 'none')
                         }
         except Exception as e:
             logger.warning(f"Could not load node {module_name}: {e}")
@@ -403,15 +410,24 @@ def _create_workflow_from_nl(requirement: str, use_llm: bool = False) -> dict:
     if use_llm:
         # Initialize LLM composer if needed
         if llm_composer is None:
-            from workflow_agent_llm import verify_ollama_connection
-            if not verify_ollama_connection():
+            try:
+                from src.agentic.agent_llm import LLMWorkflowComposer, verify_ollama_connection
+                if not verify_ollama_connection():
+                    return {
+                        "error": "Ollama not available",
+                        "suggestion": "Start Ollama: ollama serve && ollama pull qwen2.5-coder:7b",
+                        "fallback": "Using rule-based composition",
+                        "workflow": _create_workflow_rule_based(requirement)
+                    }
+                llm_composer = LLMWorkflowComposer()
+            except ImportError as e:
+                logger.warning(f"LLM features not available: {e}")
                 return {
-                    "error": "Ollama not available",
-                    "suggestion": "Start Ollama: ollama serve && ollama pull qwen2.5-coder:7b",
+                    "error": "LLM dependencies not installed",
+                    "suggestion": "Install with: pip install autogen-agentchat autogen-ext",
                     "fallback": "Using rule-based composition",
                     "workflow": _create_workflow_rule_based(requirement)
                 }
-            llm_composer = LLMWorkflowComposer()
         
         try:
             workflow = llm_composer.compose_workflow(requirement)
@@ -440,7 +456,7 @@ def _create_workflow_from_nl(requirement: str, use_llm: bool = False) -> dict:
 
 def _create_workflow_rule_based(requirement: str) -> dict:
     """Create workflow using rule-based composition (fallback)."""
-    from workflow_agent import WorkflowGoal
+    from src.agentic.agent import WorkflowGoal
     
     req_lower = requirement.lower()
     
@@ -455,14 +471,15 @@ def _create_workflow_rule_based(requirement: str) -> dict:
     else:
         performance_target = 20.0
     
-    flexibility = "flexible" in req_lower or "custom" in req_lower or "experiment" in req_lower
+    # Note: flexibility info could be used for quality_over_speed preference
+    quality_over_speed = "quality" in req_lower or "accurate" in req_lower
     
     goal = WorkflowGoal(
         task=task,
         input_type=input_type,
         output_type="display",
         performance_target=performance_target,
-        flexibility_needed=flexibility,
+        quality_over_speed=quality_over_speed,
         hardware_preference="auto"
     )
     
@@ -521,7 +538,7 @@ def _analyze_performance(workflow_type: str = None) -> dict:
 
 def _execute_workflow_with_learning(workflow_input: str, enable_learning: bool = True) -> dict:
     """Execute workflow with agentic learning enabled."""
-    from agentic_integration import AgenticWorkflowEngine
+    from src.agentic.integration import AgenticWorkflowEngine
     
     logger.info(f"Executing workflow with learning={enable_learning}")
     
