@@ -313,7 +313,7 @@ def cmd_mcp(args):
     
     import subprocess
     try:
-        subprocess.run([sys.executable, "mcp_server.py"])
+        subprocess.run([sys.executable, "start_mcp.py"])
     except KeyboardInterrupt:
         print("\n\n🛑 MCP server stopped")
     

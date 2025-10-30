@@ -12,6 +12,10 @@ dependencies = [
     "ultralytics>=8.3.0",
     "onnxruntime>=1.23.2",
     "mcp>=1.19.0",
+    "autogen-agentchat>=0.7.5",
+    "autogen-ext>=0.7.5",
+    "openai>=2.6.1",
+    "tiktoken>=0.12.0",
 ]
 
 [project.optional-dependencies]
