@@ -1,0 +1,17 @@
+{
+  "workflow": {
+    "name": "DirectML Test",
+    "description": "Test DirectML isolation"
+  },
+  "nodes": [
+    {
+      "id": "directml_test",
+      "function": "src.nodes.onnx_ops.create_onnx_directml_session_node",
+      "inputs": {
+        "model_path": "models/yolov8s.onnx",
+        "device_id": 1
+      },
+      "dependencies": []
+    }
+  ]
+}

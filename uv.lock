@@ -1022,6 +1022,18 @@ wheels = [
 ]
 
 [[package]]
+name = "py3nvml"
+version = "0.2.7"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "xmltodict" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/10/7e/fa282e456b87570d663ce97946b4dcb16850d4495ce4bd625a1a10c8ed56/py3nvml-0.2.7.tar.gz", hash = "sha256:09ee1d04598a6e664e24465f804ce3bfe119a6fdb5362df1c168f8aa929fbd73", size = 58224, upload-time = "2021-11-22T14:30:27.541Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/03/3a/ea6f2419bd20f97f65ee55a9910c722313fe99cacc0bf77afb4b74b446ff/py3nvml-0.2.7-py3-none-any.whl", hash = "sha256:30101170d1f51419c8d21fd8ca6cdc333a552b4f8a945c2fc7d107d77e4220dd", size = 55503, upload-time = "2021-11-22T14:30:25.794Z" },
+]
+
+[[package]]
 name = "pyautogen"
 version = "0.10.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1652,6 +1664,7 @@ dependencies = [
     { name = "opencv-python" },
     { name = "openvino" },
     { name = "pillow" },
+    { name = "py3nvml" },
     { name = "tiktoken" },
     { name = "ultralytics" },
 ]
@@ -1675,11 +1688,21 @@ requires-dist = [
     { name = "opencv-python", specifier = ">=4.10.0.84" },
     { name = "openvino", specifier = ">=2024.4.0" },
     { name = "pillow", specifier = ">=10.4.0" },
+    { name = "py3nvml", specifier = ">=0.2.7" },
     { name = "pyautogen", marker = "extra == 'agent'", specifier = ">=0.2.0" },
     { name = "tiktoken", specifier = ">=0.12.0" },
     { name = "ultralytics", specifier = ">=8.3.0" },
 ]
 provides-extras = ["agent"]
+
+[[package]]
+name = "xmltodict"
+version = "1.0.2"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/6a/aa/917ceeed4dbb80d2f04dbd0c784b7ee7bba8ae5a54837ef0e5e062cd3cfb/xmltodict-1.0.2.tar.gz", hash = "sha256:54306780b7c2175a3967cad1db92f218207e5bc1aba697d887807c0fb68b7649", size = 25725, upload-time = "2025-09-17T21:59:26.459Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/c0/20/69a0e6058bc5ea74892d089d64dfc3a62ba78917ec5e2cfa70f7c92ba3a5/xmltodict-1.0.2-py3-none-any.whl", hash = "sha256:62d0fddb0dcbc9f642745d8bbf4d81fd17d6dfaec5a15b5c1876300aad92af0d", size = 13893, upload-time = "2025-09-17T21:59:24.859Z" },
+]
 
 [[package]]
 name = "zipp"

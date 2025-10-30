@@ -1,0 +1,116 @@
+[
+  {
+    "timestamp": "2025-10-29T15:21:20.373500",
+    "workflow_name": "granular_video_detection",
+    "workflow_type": "granular",
+    "nodes": [],
+    "parameters": {
+      "conf_threshold": 0.25,
+      "iou_threshold": 0.7
+    },
+    "hardware": {
+      "gpu": true,
+      "npu": false,
+      "cpu": true
+    },
+    "performance": {
+      "fps": 18.7,
+      "latency_ms": 53.5
+    },
+    "success": true,
+    "error": null
+  },
+  {
+    "timestamp": "2025-10-29T15:24:22.537715",
+    "workflow_name": "Granular MP4 Video Detection",
+    "workflow_type": "unknown",
+    "nodes": [],
+    "parameters": {
+      "source": "videos/istockphoto-1585137173-640_adpp_is.mp4"
+    },
+    "hardware": {
+      "gpu": false,
+      "npu": false,
+      "cpu": true
+    },
+    "performance": {
+      "execution_time": 18.746025323867798,
+      "fps": 19.3126803155794,
+      "latency_ms": 18746.025323867798
+    },
+    "success": true,
+    "error": null
+  },
+  {
+    "timestamp": "2025-10-29T17:50:19.789506",
+    "workflow_name": "Auto-Generated: object_detection",
+    "workflow_type": "granular",
+    "nodes": [],
+    "parameters": {
+      "video_path": "sample_video.mp4",
+      "conf_threshold": 0.25,
+      "iou_threshold": 0.7,
+      "display_fps": true,
+      "save_output": false
+    },
+    "hardware": {
+      "gpu": true,
+      "npu": false,
+      "cpu": true
+    },
+    "performance": {
+      "execution_time": 1.5336778163909912,
+      "fps": 0,
+      "latency_ms": 1533.6778163909912
+    },
+    "success": true,
+    "error": null
+  },
+  {
+    "timestamp": "2025-10-29T17:52:12.235032",
+    "workflow_name": "Auto-Generated: object_detection",
+    "workflow_type": "granular",
+    "nodes": [],
+    "parameters": {
+      "source": "sample_video.mp4",
+      "model_path": "$download_model.model_path",
+      "conf_threshold": 0.25,
+      "iou_threshold": 0.7,
+      "display_fps": true,
+      "save_video": false
+    },
+    "hardware": {
+      "gpu": true,
+      "npu": false,
+      "cpu": true
+    },
+    "performance": {
+      "execution_time": 1.581378698348999,
+      "fps": 0,
+      "latency_ms": 1581.378698348999
+    },
+    "success": true,
+    "error": null
+  },
+  {
+    "timestamp": "2025-10-30T09:00:40.671243",
+    "workflow_name": "Granular MP4 Video Detection",
+    "workflow_type": "unknown",
+    "nodes": [],
+    "parameters": {
+      "source": "videos/istockphoto-1585137173-640_adpp_is.mp4"
+    },
+    "hardware": {
+      "gpu": true,
+      "npu": false,
+      "cpu": true
+    },
+    "performance": {
+      "execution_time": 17.185059070587158,
+      "fps": 21.051168600053202,
+      "latency_ms": 17185.05907058716
+    },
+    "success": true,
+    "error": null
+  }
+]

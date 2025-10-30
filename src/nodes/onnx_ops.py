@@ -46,7 +46,7 @@ def create_onnx_cpu_session_node(model_path: str) -> dict:
 
 @workflow_node("create_onnx_directml_session", 
                dependencies=["onnxruntime-directml", "opencv-python", "numpy"],
-               isolation_mode="none")
+               isolation_mode="subprocess")
 def create_onnx_directml_session_node(
     model_path: str,
     device_id: int = 0
@@ -82,15 +82,18 @@ def create_onnx_directml_session_node(
     input_shape = session.get_inputs()[0].shape
     output_names = [output.name for output in session.get_outputs()]
     
+    # For subprocess isolation, we can't return the session object (not serializable)
+    # Instead, return metadata that can be used to recreate the session
     return {
-        "session": session,
+        "session_id": f"directml_session_{device_id}",
         "model_path": model_path,
         "provider": "DirectML",
         "device_id": device_id,
         "input_name": input_name,
         "input_shape": input_shape,
         "output_names": output_names,
-        "actual_providers": session.get_providers()
+        "actual_providers": session.get_providers(),
+        "session_created": True
     }
 
 
@@ -162,17 +165,18 @@ def run_onnx_inference_single_node(
 
 @workflow_node("run_onnx_inference_benchmark", isolation_mode="auto")
 def run_onnx_inference_benchmark_node(
-    session: Any,
-    input_name: str,
-    image: np.ndarray,
+    session: Any = None,
+    input_name: str = None,
+    image: np.ndarray = None,
     iterations: int = 100,
-    warmup_iterations: int = 3
+    warmup_iterations: int = 3,
+    **kwargs  # Accept additional parameters from session metadata
 ) -> dict:
     """
     Benchmark ONNX inference with multiple iterations.
     
     Args:
-        session: ONNX Runtime session
+        session: ONNX Runtime session OR session metadata dict
         input_name: Name of input tensor
         image: Input tensor
         iterations: Number of benchmark iterations
@@ -181,6 +185,36 @@ def run_onnx_inference_benchmark_node(
     Returns:
         dict with outputs, timing stats, and FPS
     """
+    import onnxruntime as ort
+    
+    # Handle session metadata (from isolated execution) vs direct session object
+    if isinstance(session, dict) and 'session_id' in session:
+        # Session metadata from isolated execution - recreate session
+        session_info = session
+        input_name = session_info['input_name']
+        model_path = session_info['model_path']
+        device_id = session_info.get('device_id', 0)
+        
+        # Recreate DirectML session in this process
+        session = ort.InferenceSession(
+            model_path,
+            providers=[
+                ('DmlExecutionProvider', {'device_id': device_id}),
+                'CPUExecutionProvider'
+            ]
+        )
+    elif hasattr(session, 'run'):
+        # Direct session object - use as-is
+        pass
+    else:
+        raise ValueError(f"Invalid session type: {type(session)}")
+        
+    # Get image from kwargs if not provided directly
+    if image is None:
+        image = kwargs.get('image')
+    if image is None:
+        raise ValueError("Image tensor is required")
+    
     # Warmup
     for _ in range(warmup_iterations):
         session.run(None, {input_name: image})
@@ -245,6 +279,91 @@ def get_onnx_model_info_node(session: Any) -> dict:
         "outputs": outputs_info,
         "num_inputs": len(inputs_info),
         "num_outputs": len(outputs_info)
+    }
+
+
+@workflow_node("run_onnx_directml_inference_benchmark", 
+               dependencies=["onnxruntime-directml>=1.19.0"], 
+               isolation_mode="subprocess")
+def run_onnx_directml_inference_benchmark_node(
+    session: Any = None,
+    input_name: str = None,
+    image: np.ndarray = None,
+    iterations: int = 100,
+    warmup_iterations: int = 3,
+    **kwargs  # Accept additional parameters from session metadata
+) -> dict:
+    """
+    Benchmark DirectML ONNX inference with multiple iterations (DirectML-specific).
+    
+    Args:
+        session: ONNX Runtime session OR session metadata dict
+        input_name: Name of input tensor
+        image: Input tensor
+        iterations: Number of benchmark iterations
+        warmup_iterations: Number of warmup iterations
+        
+    Returns:
+        dict with outputs, timing stats, and FPS
+    """
+    import onnxruntime as ort
+    import time
+    
+    # Handle session metadata (from isolated execution) vs direct session object
+    if isinstance(session, dict) and 'session_id' in session:
+        # Session metadata from isolated execution - recreate session
+        session_info = session
+        input_name = session_info['input_name']
+        model_path = session_info['model_path']
+        device_id = session_info.get('device_id', 0)
+        
+        # Recreate DirectML session in this process
+        session = ort.InferenceSession(
+            model_path,
+            providers=[
+                ('DmlExecutionProvider', {'device_id': device_id}),
+                'CPUExecutionProvider'
+            ]
+        )
+    elif hasattr(session, 'run'):
+        # Direct session object - use as-is
+        pass
+    else:
+        raise ValueError(f"Invalid session type: {type(session)}")
+        
+    # Get image from kwargs if not provided directly
+    if image is None:
+        image = kwargs.get('image')
+    if image is None:
+        raise ValueError("Image tensor is required")
+    
+    # Warmup
+    for _ in range(warmup_iterations):
+        session.run(None, {input_name: image})
+    
+    # Benchmark
+    inference_times = []
+    all_outputs = None
+    
+    for i in range(iterations):
+        start_time = time.perf_counter()
+        outputs = session.run(None, {input_name: image})
+        end_time = time.perf_counter()
+        
+        inference_times.append(end_time - start_time)
+        if i == 0:  # Store first output
+            all_outputs = outputs
+    
+    # Calculate statistics
+    avg_time = sum(inference_times) / len(inference_times)
+    fps = 1.0 / avg_time
+    
+    return {
+        "outputs": all_outputs,
+        "avg_inference_time_ms": avg_time * 1000,
+        "fps": fps,
+        "iterations": iterations,
+        "all_times_ms": [t * 1000 for t in inference_times]
     }
 
 

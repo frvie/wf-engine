@@ -1,0 +1,34 @@
+{
+  "workflow": {
+    "name": "test_gaussian_blur",
+    "description": "Simple test of custom Gaussian blur node - CPU only",
+    "strategy": "custom"
+  },
+  "nodes": [
+    {
+      "id": "read",
+      "function": "src.nodes.image_ops.read_image_node",
+      "inputs": {
+        "image_path": "output/test_processed.jpg"
+      },
+      "dependencies": []
+    },
+    {
+      "id": "blur",
+      "function": "src.nodes.custom.apply_gaussian_blur.apply_gaussian_blur_node",
+      "inputs": {
+        "kernel_size": 15
+      },
+      "dependencies": ["read"]
+    },
+    {
+      "id": "save",
+      "function": "src.nodes.image_ops.save_image_node",
+      "inputs": {
+        "output_path": "output/test_blurred.jpg"
+      },
+      "dependencies": ["blur"]
+    }
+  ]
+}
+

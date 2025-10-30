@@ -83,6 +83,9 @@
       "id": "cpu_benchmark",
       "function": "src.nodes.onnx_ops.run_onnx_inference_benchmark_node",
       "inputs": {
+        "session": "$cpu_session.session",
+        "input_name": "$cpu_session.input_name",
+        "image": "$add_batch.image",
         "iterations": 5,
         "warmup_iterations": 1
       },
@@ -90,8 +93,10 @@
     },
     {
       "id": "directml_benchmark",
-      "function": "src.nodes.onnx_ops.run_onnx_inference_benchmark_node",
+      "function": "src.nodes.onnx_ops.run_onnx_directml_inference_benchmark_node",
       "inputs": {
+        "session": "$directml_session",
+        "image": "$add_batch.image",
         "iterations": 5,
         "warmup_iterations": 1
       },
@@ -269,6 +274,9 @@
       "id": "cpu_summary",
       "function": "src.nodes.yolo_ops.create_detection_summary_node",
       "inputs": {
+        "detections": "$cpu_format.detections",
+        "inference_time_ms": "$cpu_benchmark.inference_time_ms",
+        "fps": "$cpu_benchmark.fps",
         "provider": "CPU"
       },
       "dependencies": ["cpu_format", "cpu_benchmark"]
@@ -277,6 +285,9 @@
       "id": "directml_summary",
       "function": "src.nodes.yolo_ops.create_detection_summary_node",
       "inputs": {
+        "detections": "$directml_format.detections",
+        "inference_time_ms": "$directml_benchmark.avg_inference_time_ms",
+        "fps": "$directml_benchmark.fps",
         "provider": "DirectML"
       },
       "dependencies": ["directml_format", "directml_benchmark"]

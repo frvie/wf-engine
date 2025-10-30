@@ -93,6 +93,7 @@ class FunctionWorkflowEngine:
         
         required_functions = {node.get('function', '') for node in self.nodes if node.get('function')}
         self.logger.info(f"Discovering nodes for {len(required_functions)} functions...")
+        self.logger.debug(f"Required functions: {list(required_functions)}")
         
         nodes_dir = Path("src/nodes")
         if not nodes_dir.exists():
@@ -118,6 +119,7 @@ class FunctionWorkflowEngine:
                     # Check for workflow_node decorator by looking for node_id attribute
                     if inspect.isfunction(obj) and hasattr(obj, 'node_id'):
                         full_function_name = f"{module_name}.{name}"
+                        self.logger.debug(f"Found function {full_function_name}, required: {full_function_name in required_functions}")
                         if full_function_name in required_functions:
                             self.discovered_nodes[full_function_name] = {
                                 'function': obj,
@@ -127,10 +129,12 @@ class FunctionWorkflowEngine:
                                 'isolation_mode': getattr(obj, 'isolation_mode', 'auto')
                             }
                             loaded_count += 1
-                            self.logger.debug(f"Loaded {full_function_name} with isolation_mode={getattr(obj, 'isolation_mode', 'auto')}")
+                            self.logger.info(f"✅ Loaded {full_function_name} with isolation_mode={getattr(obj, 'isolation_mode', 'auto')}")
                             
             except Exception as e:
                 self.logger.warning(f"Failed to load {py_file.name}: {e}")
+                import traceback
+                self.logger.debug(f"Full error: {traceback.format_exc()}")
         
         self.logger.info(f"Loaded {loaded_count}/{len(required_functions)} required nodes")
     
@@ -265,24 +269,64 @@ class FunctionWorkflowEngine:
             if node_metadata['dependencies'] and node_metadata['isolation_mode'] != 'subprocess':
                 self._ensure_main_env_dependencies(node_metadata['dependencies'])
         
-        # Check if isolation needed
-        if self.environment_manager and node_metadata:
-            node_type = function_name.split('.')[-1]
-            
-            env_info = self.environment_manager.get_environment_for_node(
-                node_type, 
-                node, 
-                workflow_config=self.workflow_config,
-                node_metadata=node_metadata
-            )
-            
-            if env_info and env_info.get('is_isolated'):
-                self.logger.info(f"Executing {node['id']} in isolated environment: {env_info['env_name']}")
-                
+        # Check if isolation needed - use direct function inspection for subprocess mode
+        if self.environment_manager:
+            # Get node metadata from function if not available
+            if not node_metadata:
                 try:
-                    return self._execute_in_environment(function_name, inputs, env_info, node['id'])
+                    # Try to import and inspect the function directly
+                    module_name, func_name = function_name.rsplit('.', 1)
+                    module = importlib.import_module(module_name)
+                    func = getattr(module, func_name)
+                    
+                    node_metadata = {
+                        'dependencies': getattr(func, 'dependencies', []),
+                        'environment': getattr(func, 'environment', None),
+                        'isolation_mode': getattr(func, 'isolation_mode', 'auto')
+                    }
                 except Exception as e:
-                    self.logger.warning(f"Isolated execution failed, falling back to local: {e}")
+                    self.logger.debug(f"Could not inspect function {function_name}: {e}")
+            
+            # Force isolation for subprocess mode (legacy compatibility)
+            if node_metadata and node_metadata.get('isolation_mode') == 'subprocess':
+                node_type = function_name.split('.')[-1]
+                
+                env_info = self.environment_manager.get_environment_for_node(
+                    node_type, 
+                    node, 
+                    workflow_config=self.workflow_config,
+                    node_metadata=node_metadata
+                )
+                
+                if env_info and env_info.get('is_isolated'):
+                    self.logger.info(f"🔒 Executing {node['id']} in isolated subprocess environment: {env_info['env_name']}")
+                    
+                    try:
+                        return self._execute_in_environment(function_name, inputs, env_info, node['id'])
+                    except Exception as e:
+                        self.logger.error(f"❌ Isolated execution failed for {node['id']}: {e}")
+                        raise e  # Don't fall back for explicit subprocess mode
+                else:
+                    self.logger.warning(f"⚠️  Subprocess isolation requested for {node['id']} but environment not available")
+            
+            # Regular isolation check for other modes
+            elif node_metadata:
+                node_type = function_name.split('.')[-1]
+                
+                env_info = self.environment_manager.get_environment_for_node(
+                    node_type, 
+                    node, 
+                    workflow_config=self.workflow_config,
+                    node_metadata=node_metadata
+                )
+                
+                if env_info and env_info.get('is_isolated'):
+                    self.logger.info(f"Executing {node['id']} in isolated environment: {env_info['env_name']}")
+                    
+                    try:
+                        return self._execute_in_environment(function_name, inputs, env_info, node['id'])
+                    except Exception as e:
+                        self.logger.warning(f"Isolated execution failed, falling back to local: {e}")
         
         # Try pre-loaded function first
         if function_name in self.discovered_nodes:

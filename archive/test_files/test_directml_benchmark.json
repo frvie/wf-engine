@@ -1,0 +1,65 @@
+{
+  "workflow": {
+    "name": "DirectML Benchmark Test",
+    "description": "Test DirectML performance with isolated execution"
+  },
+  "nodes": [
+    {
+      "id": "read_image",
+      "function": "src.nodes.image_ops.read_image_node",
+      "inputs": {
+        "image_path": "input/soccer.jpg"
+      },
+      "dependencies": []
+    },
+    {
+      "id": "resize_image",
+      "function": "src.nodes.image_ops.resize_image_letterbox_node",
+      "inputs": {
+        "target_width": 640,
+        "target_height": 640
+      },
+      "dependencies": ["read_image"]
+    },
+    {
+      "id": "normalize_image",
+      "function": "src.nodes.image_ops.normalize_image_node",
+      "inputs": {
+        "scale": 255.0
+      },
+      "dependencies": ["resize_image"]
+    },
+    {
+      "id": "hwc_to_chw",
+      "function": "src.nodes.image_ops.hwc_to_chw_node",
+      "inputs": {},
+      "dependencies": ["normalize_image"]
+    },
+    {
+      "id": "add_batch_dim",
+      "function": "src.nodes.image_ops.add_batch_dimension_node",
+      "inputs": {},
+      "dependencies": ["hwc_to_chw"]
+    },
+    {
+      "id": "directml_session",
+      "function": "src.nodes.onnx_ops.create_onnx_directml_session_node",
+      "inputs": {
+        "model_path": "models/yolov8s.onnx",
+        "device_id": 1
+      },
+      "dependencies": []
+    },
+    {
+      "id": "directml_benchmark",
+      "function": "src.nodes.onnx_ops.run_onnx_inference_benchmark_node",
+      "inputs": {
+        "session": "$directml_session",
+        "image": "$add_batch_dim.image",
+        "iterations": 5,
+        "warmup_iterations": 1
+      },
+      "dependencies": ["directml_session", "add_batch_dim"]
+    }
+  ]
+}

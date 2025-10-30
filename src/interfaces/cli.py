@@ -10,7 +10,6 @@ Quick commands for all workflow operations:
 - wf devices                     List available hardware
 - wf nodes                       List available workflow nodes
 - wf mcp                         Start MCP server for AI agents
-- wf demo                        Run interactive demo
 """
 
 import sys
@@ -21,7 +20,7 @@ import logging
 
 # Setup logging
 logging.basicConfig(
-    level=logging.INFO,
+    level=logging.DEBUG,
     format='%(asctime)s | %(name)s | %(levelname)s | %(message)s',
     datefmt='%H:%M:%S'
 )
@@ -329,44 +328,30 @@ def cmd_mcp(args):
     return 0
 
 
-def cmd_demo(args):
-    """Run interactive demo."""
-    import subprocess
-    
-    if args.llm:
-        print("\n🧠 Running LLM + MCP Integration Demo...")
-        subprocess.run([sys.executable, "demo_llm_mcp.py"])
-    else:
-        print("\n🤖 Running Agentic System Demo...")
-        subprocess.run([sys.executable, "demo_agent.py"])
-    
-    return 0
-
-
-def cmd_templates(args):
-    """List available workflow templates."""
+def cmd_workflows(args):
+    """List available workflows."""
     workflows_dir = Path("workflows")
     
-    print("\n📋 AVAILABLE WORKFLOW TEMPLATES")
+    print("\n📋 AVAILABLE WORKFLOWS")
     print("=" * 80)
     
-    templates = list(workflows_dir.glob("*.json"))
+    workflows = list(workflows_dir.glob("*.json"))
     
-    for template in sorted(templates):
+    for workflow in sorted(workflows):
         try:
-            with open(template) as f:
+            with open(workflow) as f:
                 data = json.load(f)
             
             strategy = data.get('workflow', {}).get('strategy', 'unknown')
             nodes = len(data.get('nodes', []))
             
-            print(f"\n• {template.name}")
+            print(f"\n• {workflow.name}")
             print(f"  Strategy: {strategy}, Nodes: {nodes}")
             
         except Exception as e:
-            print(f"\n• {template.name} (invalid: {e})")
+            print(f"\n• {workflow.name} (invalid: {e})")
     
-    print(f"\n💡 Use with: wfe run workflows/<template>.json")
+    print(f"\n💡 Use with: wfe run workflows/<workflow>.json")
     
     return 0
 
@@ -484,14 +469,9 @@ Examples:
     mcp_parser = subparsers.add_parser('mcp', help='Start MCP server')
     mcp_parser.set_defaults(func=cmd_mcp)
     
-    # Demo command
-    demo_parser = subparsers.add_parser('demo', help='Run interactive demo')
-    demo_parser.add_argument('--llm', action='store_true', help='Run LLM demo instead')
-    demo_parser.set_defaults(func=cmd_demo)
-    
-    # Templates command
-    templates_parser = subparsers.add_parser('templates', help='List available templates')
-    templates_parser.set_defaults(func=cmd_templates)
+    # Workflows command
+    workflows_parser = subparsers.add_parser('workflows', help='List available workflows')
+    workflows_parser.set_defaults(func=cmd_workflows)
     
     # Generate command
     generate_parser = subparsers.add_parser('generate', help='Generate a new workflow node')
