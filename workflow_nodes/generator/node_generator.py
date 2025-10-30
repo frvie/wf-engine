@@ -188,10 +188,7 @@ from workflow_decorator import workflow_node
 import numpy as np
 # Add other imports as needed
 
-@workflow_node(
-    name="<descriptive_snake_case_name>",
-    outputs={spec.outputs}
-)
+@workflow_node("<descriptive_snake_case_name>", isolation_mode="none")
 def <function_name>({', '.join(spec.inputs)}, **kwargs):
     \"\"\"
     <Clear one-line description>
@@ -218,7 +215,7 @@ def <function_name>({', '.join(spec.inputs)}, **kwargs):
 ```
 
 CRITICAL RULES:
-1. MUST use @workflow_node decorator
+1. MUST use @workflow_node("<name>", isolation_mode="none") decorator
 2. MUST be a pure function (no global state modifications)
 3. MUST include comprehensive docstring
 4. MUST handle errors gracefully (try/except where needed)
@@ -236,7 +233,7 @@ Generate ONLY the Python code, no markdown formatting, no explanations.
         # Determine imports based on category
         imports = ["from workflow_decorator import workflow_node"]
         
-        if spec.category in ['atomic', 'image']:
+        if spec.category in ['atomic', 'image', 'custom']:
             imports.append("import numpy as np")
             imports.append("import cv2")
         elif spec.category == 'onnx':
@@ -247,18 +244,17 @@ Generate ONLY the Python code, no markdown formatting, no explanations.
         func_name = self._goal_to_function_name(spec.goal)
         node_name = func_name.replace('_node', '')
         
-        # Generate docstring
-        docstring = f'''"""
-    {spec.description or spec.goal}
-    
-    Atomic workflow node following granular design principles.
-    
-    Args:
-        {chr(10).join(f'        {inp}: Input data' for inp in spec.inputs)}
-    
-    Returns:
-        {chr(10).join(f'        {out}: Output data' for out in spec.outputs) if len(spec.outputs) > 1 else f'        {spec.outputs[0]}: Output data'}
-    """'''
+        # Build args docstring
+        args_doc = '\n'.join(f'        {inp}: Input data' for inp in spec.inputs)
+        
+        # Build returns docstring
+        if len(spec.outputs) > 1:
+            returns_doc = '\n'.join(f'        {out}: Output data' for out in spec.outputs)
+        else:
+            returns_doc = f'        {spec.outputs[0]}: Output data'
+        
+        # Build placeholder assignments
+        placeholder_code = '\n'.join(f'    {out} = None  # TODO: Compute {out}' for out in spec.outputs)
         
         # Generate return statement
         if len(spec.outputs) == 1:
@@ -266,22 +262,29 @@ Generate ONLY the Python code, no markdown formatting, no explanations.
         else:
             return_stmt = f"return {', '.join(spec.outputs)}"
         
-        # Template code
+        # Template code with proper indentation
         code = f'''{chr(10).join(imports)}
 
 
-@workflow_node(
-    name="{node_name}",
-    outputs={spec.outputs}
-)
+@workflow_node("{node_name}", isolation_mode="none")
 def {func_name}({', '.join(spec.inputs)}):
-    {docstring}
+    """
+    {spec.description or spec.goal}
+    
+    Atomic workflow node following granular design principles.
+    
+    Args:
+{args_doc}
+    
+    Returns:
+{returns_doc}
+    """
     
     # TODO: Implement the actual logic
     # This is a template - customize for your specific needs
     
     # Placeholder implementation
-    {chr(10).join(f'    {out} = None  # TODO: Compute {out}' for out in spec.outputs)}
+{placeholder_code}
     
     {return_stmt}
 '''
