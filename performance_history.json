@@ -91,5 +91,26 @@
     },
     "success": true,
     "error": null
+  },
+  {
+    "timestamp": "2025-10-30T09:00:40.671243",
+    "workflow_name": "Granular MP4 Video Detection",
+    "workflow_type": "unknown",
+    "nodes": [],
+    "parameters": {
+      "source": "videos/istockphoto-1585137173-640_adpp_is.mp4"
+    },
+    "hardware": {
+      "gpu": true,
+      "npu": false,
+      "cpu": true
+    },
+    "performance": {
+      "execution_time": 17.185059070587158,
+      "fps": 21.051168600053202,
+      "latency_ms": 17185.05907058716
+    },
+    "success": true,
+    "error": null
   }
 ]

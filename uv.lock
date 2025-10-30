@@ -1464,6 +1464,7 @@ name = "wf-engine"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
+    { name = "mcp" },
     { name = "numpy" },
     { name = "onnxruntime" },
     { name = "onnxruntime-gpu" },
@@ -1481,6 +1482,7 @@ agent = [
 
 [package.metadata]
 requires-dist = [
+    { name = "mcp", specifier = ">=1.19.0" },
     { name = "mcp", marker = "extra == 'agent'", specifier = ">=1.1.0" },
     { name = "numpy", specifier = ">=2.0.0" },
     { name = "onnxruntime", specifier = ">=1.23.2" },

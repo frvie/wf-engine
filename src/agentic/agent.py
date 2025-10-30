@@ -73,11 +73,22 @@ class WorkflowGoal:
 class WorkflowComposer:
     """Generates workflows from high-level goals."""
     
-    def __init__(self, nodes_dir: Path = Path("workflow_nodes")):
+    def __init__(self, nodes_dir: Path = None):
         self.logger = logging.getLogger('workflow.composer')
+        if nodes_dir is None:
+            # Default to src/nodes relative to this file's parent directory
+            nodes_dir = Path(__file__).parent.parent / "nodes"
         self.nodes_dir = nodes_dir
-        self.available_nodes = self._discover_nodes()
-        
+        self.logger.debug(f"Nodes directory: {self.nodes_dir.absolute()}")
+        self.available_nodes = {}  # Lazy load - don't discover on init
+        self._nodes_discovered = False
+    
+    def _ensure_nodes_discovered(self):
+        """Discover nodes on first use (lazy loading)."""
+        if not self._nodes_discovered:
+            self.available_nodes = self._discover_nodes()
+            self._nodes_discovered = True
+    
     def _discover_nodes(self) -> Dict[str, Dict[str, Any]]:
         """Discover available nodes and their capabilities."""
         import importlib
@@ -92,10 +103,16 @@ class WorkflowComposer:
                 continue
             
             try:
-                # Convert path to module name
-                relative_path = py_file.relative_to(self.nodes_dir.parent)
-                module_name = str(relative_path.with_suffix('')).replace('\\', '.').replace('/', '.')
+                # Convert path to module name for src.nodes.*
+                relative_path = py_file.relative_to(self.nodes_dir)
+                if relative_path.parts:
+                    # Build module name: src.nodes.{file} or src.nodes.custom.{file}
+                    module_parts = ['src', 'nodes'] + list(relative_path.parts[:-1]) + [relative_path.stem]
+                    module_name = '.'.join(module_parts)
+                else:
+                    module_name = f'src.nodes.{py_file.stem}'
                 
+                self.logger.debug(f"Trying to import: {module_name}")
                 module = importlib.import_module(module_name)
                 
                 # Look for functions with workflow_node decorator
@@ -155,6 +172,7 @@ class WorkflowComposer:
         Returns:
             Complete workflow JSON
         """
+        self._ensure_nodes_discovered()  # Lazy load nodes
         self.logger.info(f"Composing workflow for goal: {goal.task}")
         
         # Select appropriate nodes based on goal

@@ -357,7 +357,7 @@ def cmd_templates(args):
         except Exception as e:
             print(f"\n• {template.name} (invalid: {e})")
     
-    print(f"\n💡 Use with: wf run workflows/<template>.json")
+    print(f"\n💡 Use with: wfe run workflows/<template>.json")
     
     return 0
 
@@ -401,7 +401,7 @@ def cmd_generate(args):
             print(f"   Name: {result['node_name']}")
             print(f"   File: {result['file_path']}")
             print(f"\n💡 The node is immediately available for use in workflows.")
-            print(f"   Run 'wf nodes' to see all available nodes.")
+            print(f"   Run 'wfe nodes' to see all available nodes.")
             
             if args.show_code:
                 print(f"\n📄 Generated Code:")
@@ -425,16 +425,16 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  wf run workflows/granular_parallel_inference.json
-  wf create "fast video detection with NPU"
-  wf create "detect objects in dashcam footage" --run
-  wf generate "apply gaussian blur to image" -i image -o blurred_image
-  wf generate "extract edges using Canny" -i image -o edges -c atomic
-  wf optimize workflows/my_workflow.json --target 30
-  wf status
-  wf devices
-  wf nodes
-  wf mcp
+  wfe run workflows/granular_parallel_inference.json
+  wfe create "fast video detection with NPU"
+  wfe create "detect objects in dashcam footage" --run
+  wfe generate "apply gaussian blur to image" -i image -o blurred_image
+  wfe generate "extract edges using Canny" -i image -o edges -c atomic
+  wfe optimize workflows/my_workflow.json --target 30
+  wfe status
+  wfe devices
+  wfe nodes
+  wfe mcp
         """
     )
     

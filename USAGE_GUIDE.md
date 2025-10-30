@@ -22,7 +22,7 @@ uv sync
 
 ```powershell
 # Execute granular parallel inference (recommended)
-uv run python wf.py run workflows/granular_parallel_inference.json
+uv run python wfe.py run workflows/granular_parallel_inference.json
 
 # Or use the workflow orchestrator directly
 uv run python workflow_orchestrator_minimal.py workflows/granular_parallel_inference.json
@@ -30,16 +30,16 @@ uv run python workflow_orchestrator_minimal.py workflows/granular_parallel_infer
 
 ---
 
-## 🔧 Workflow CLI (`wf.py`)
+## 🔧 Workflow CLI (`wfe.py`)
 
-The `wf.py` command-line interface provides simplified access to all workflow operations:
+The `wfe.py` command-line interface provides simplified access to all workflow operations:
 
 ### Core Commands
 
 #### 📋 **List Available Templates**
 ```powershell
 # See all available workflows
-wf templates
+wfe templates
 
 # Output shows:
 # • granular_parallel_inference.json
@@ -50,35 +50,34 @@ wf templates
 
 #### ⚡ **Execute Workflows**
 ```powershell
-# Run the main granular workflow
-wf run workflows/granular_parallel_inference.json
+# Run the main granular workflowwf run workflows/granular_parallel_inference.json
 
 # Run with agentic learning enabled
-wf run workflows/granular_parallel_inference.json --learn
+wfe run workflows/granular_parallel_inference.json --learn
 
 # Quick performance test with simpler workflow
-wf run workflows/multi_backend_separated_v8.json
+wfe run workflows/multi_backend_separated_v8.json
 ```
 
 #### 🧠 **Create Workflows from Natural Language**
 ```powershell
 # Create and save workflow
-wf create "real-time object detection using NPU and DirectML"
+wfe create "real-time object detection using NPU and DirectML"
 
 # Create and run immediately
-wf create "fast video processing for dashcam footage" --run
+wfe create "fast video processing for dashcam footage" --run
 
 # Save to specific location
-wf create "batch image analysis pipeline" -o workflows/custom_batch.json
+wfe create "batch image analysis pipeline" -o workflows/custom_batch.json
 ```
 
 #### 📊 **Performance Analysis**
 ```powershell
 # Get optimization suggestions
-wf optimize workflows/granular_parallel_inference.json --target 30
+wfe optimize workflows/granular_parallel_inference.json --target 30
 
 # Check agent status and learning history
-wf status
+wfe status
 
 # View performance trends and recommendations
 ```
@@ -86,7 +85,7 @@ wf status
 #### 💻 **Hardware Detection**
 ```powershell
 # List available inference devices
-wf devices
+wfe devices
 
 # Output shows:
 # GPU Devices: NVIDIA RTX 4080 (16 GB)
@@ -98,23 +97,23 @@ wf devices
 #### 🔧 **Node Management**
 ```powershell
 # List all available workflow nodes
-wf nodes
+wfe nodes
 
 # Generate new nodes from description
-wf generate "apply gaussian blur to image" -i image -o blurred_image -c atomic
+wfe generate "apply gaussian blur to image" -i image -o blurred_image -c atomic
 
 # Generate complex processing node
-wf generate "extract SIFT features from grayscale image" -i image -o features -c utils
+wfe generate "extract SIFT features from grayscale image" -i image -o features -c utils
 ```
 
 #### 🤖 **AI Agent Integration**
 ```powershell
 # Start MCP server for Claude Desktop
-wf mcp
+wfe mcp
 
 # Run interactive demos
-wf demo
-wf demo --llm
+wfe demo
+wfe demo --llm
 ```
 
 ### Advanced CLI Usage
@@ -122,22 +121,22 @@ wf demo --llm
 #### Custom Workflow Creation
 ```powershell
 # Create workflow with specific requirements
-wf create "real-time detection optimized for Intel NPU with 60 FPS target"
+wfe create "real-time detection optimized for Intel NPU with 60 FPS target"
 
 # Create batch processing workflow
-wf create "process folder of security camera images, detect people and vehicles"
+wfe create "process folder of security camera images, detect people and vehicles"
 
 # Create video analysis pipeline
-wf create "analyze dashcam video, detect traffic signs and lane markings"
+wfe create "analyze dashcam video, detect traffic signs and lane markings"
 ```
 
 #### Performance Optimization
 ```powershell
 # Analyze specific workflow performance
-wf optimize workflows/granular_parallel_inference.json --target 45
+wfe optimize workflows/granular_parallel_inference.json --target 45
 
 # Check what the agent has learned
-wf status
+wfe status
 
 # Example output:
 # 📚 Knowledge Base:
@@ -150,13 +149,13 @@ wf status
 #### Node Generation Examples
 ```powershell
 # Generate image processing nodes
-wf generate "resize image maintaining aspect ratio" -i image,target_size -o resized_image
+wfe generate "resize image maintaining aspect ratio" -i image,target_size -o resized_image
 
 # Generate ML preprocessing node  
-wf generate "normalize tensor values to 0-1 range" -i tensor -o normalized_tensor -c atomic
+wfe generate "normalize tensor values to 0-1 range" -i tensor -o normalized_tensor -c atomic
 
 # Generate utility node with constraints
-wf generate "convert video to frames" -i video_path -o frame_list --constraints "use opencv,efficient memory usage"
+wfe generate "convert video to frames" -i video_path -o frame_list --constraints "use opencv,efficient memory usage"
 ```
 
 ---
@@ -259,26 +258,26 @@ The **`granular_parallel_inference.json`** demonstrates the platform's core phil
 
 ```powershell
 # Execute with agentic learning
-wf run workflows/granular_parallel_inference.json --learn
+wfe run workflows/granular_parallel_inference.json --learn
 
 # Check what was learned
-wf status
+wfe status
 
 # Get optimization suggestions based on learning
-wf optimize workflows/granular_parallel_inference.json --target 60
+wfe optimize workflows/granular_parallel_inference.json --target 60
 ```
 
 ### Custom Granular Workflow Creation
 
 ```powershell
 # Create granular video processing workflow
-wf create "frame-by-frame video analysis with atomic operations for real-time processing"
+wfe create "frame-by-frame video analysis with atomic operations for real-time processing"
 
 # Create granular batch processing workflow  
-wf create "atomic image preprocessing pipeline for training data preparation"
+wfe create "atomic image preprocessing pipeline for training data preparation"
 
 # Create granular multi-model workflow
-wf create "ensemble detection using multiple YOLO models with atomic voting"
+wfe create "ensemble detection using multiple YOLO models with atomic voting"
 ```
 
 ### Node-Level Performance Analysis
@@ -295,13 +294,13 @@ uv run python -m cProfile -o profile.stats workflow_orchestrator_minimal.py work
 
 ```powershell
 # Check available hardware first
-wf devices
+wfe devices
 
 # Create optimized workflow for detected hardware
-wf create "optimized detection for Intel NPU and DirectML GPU with load balancing"
+wfe create "optimized detection for Intel NPU and DirectML GPU with load balancing"
 
 # Get hardware-specific optimization suggestions
-wf optimize workflows/granular_parallel_inference.json --target 30
+wfe optimize workflows/granular_parallel_inference.json --target 30
 ```
 
 ---
@@ -328,7 +327,7 @@ wf optimize workflows/granular_parallel_inference.json --target 30
 
 3. **Start MCP Server**:
 ```powershell
-wf mcp
+wfe mcp
 ```
 
 ### AI Commands for Granular Workflows
@@ -369,10 +368,10 @@ wf mcp
 
 ```powershell
 # Monitor granular workflow execution
-wf run workflows/granular_parallel_inference.json --learn
+wfe run workflows/granular_parallel_inference.json --learn
 
 # View detailed performance breakdown
-wf status
+wfe status
 
 # Get node-level timing analysis
 uv run python workflow_orchestrator_minimal.py workflows/granular_parallel_inference.json --log-level INFO
@@ -404,15 +403,15 @@ uv run python workflow_orchestrator_minimal.py workflows/granular_parallel_infer
 
 ```powershell
 # Generate image processing node
-wf generate "convert RGB image to grayscale using weighted average" \
+wfe generate "convert RGB image to grayscale using weighted average" \
   -i rgb_image -o gray_image -c atomic
 
 # Generate ML preprocessing node
-wf generate "apply CLAHE histogram equalization to enhance contrast" \
+wfe generate "apply CLAHE histogram equalization to enhance contrast" \
   -i image -o enhanced_image -c atomic --constraints "use opencv"
 
 # Generate utility node
-wf generate "save detection results to JSON file with timestamp" \
+wfe generate "save detection results to JSON file with timestamp" \
   -i detections,filename -o success -c utils
 ```
 
@@ -458,7 +457,7 @@ wf generate "save detection results to JSON file with timestamp" \
 #### Node Dependency Resolution
 ```powershell
 # Check node dependencies
-wf nodes
+wfe nodes
 
 # Validate workflow structure
 uv run python -c "
@@ -474,7 +473,7 @@ with open('workflows/granular_parallel_inference.json', 'r') as f:
 #### Performance Issues
 ```powershell
 # Check hardware availability
-wf devices
+wfe devices
 
 # Verify backend support
 uv run python -c "
@@ -540,21 +539,21 @@ stats.sort_stats('cumulative').print_stats(20)
 
 | Command | Purpose | Example |
 |---------|---------|---------|
-| `wf templates` | List available workflows | Shows granular and simple workflows |
-| `wf run` | Execute workflow | `wf run workflows/granular_parallel_inference.json` |
-| `wf create` | Generate from description | `wf create "real-time NPU detection"` |
-| `wf optimize` | Get performance suggestions | `wf optimize <workflow> --target 30` |
-| `wf status` | Show agent learning | Displays performance trends |
-| `wf devices` | List hardware | Shows GPU, NPU, CPU availability |
-| `wf nodes` | List available nodes | Shows all atomic node functions |
-| `wf generate` | Create custom nodes | `wf generate "blur image" -c atomic` |
-| `wf mcp` | Start AI agent server | For Claude Desktop integration |
-| `wf demo` | Run interactive demos | Shows platform capabilities |
+| `wfe templates` | List available workflows | Shows granular and simple workflows |
+| `wfe run` | Execute workflow | `wfe run workflows/granular_parallel_inference.json` |
+| `wfe create` | Generate from description | `wfe create "real-time NPU detection"` |
+| `wfe optimize` | Get performance suggestions | `wfe optimize <workflow> --target 30` |
+| `wfe status` | Show agent learning | Displays performance trends |
+| `wfe devices` | List hardware | Shows GPU, NPU, CPU availability |
+| `wfe nodes` | List available nodes | Shows all atomic node functions |
+| `wfe generate` | Create custom nodes | `wfe generate "blur image" -c atomic` |
+| `wfe mcp` | Start AI agent server | For Claude Desktop integration |
+| `wfe demo` | Run interactive demos | Shows platform capabilities |
 
 ### Getting Help
-1. Use `wf status` to check system state
-2. Use `wf devices` to verify hardware detection
-3. Use `wf nodes` to confirm node availability
+1. Use `wfe status` to check system state
+2. Use `wfe devices` to verify hardware detection
+3. Use `wfe nodes` to confirm node availability
 4. Check logs in `logs/` directory for detailed execution traces
 5. Enable debug logging for granular node-level analysis
 
