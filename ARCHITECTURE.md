@@ -48,6 +48,14 @@ workflow_engine/
 │   │   │   ├── granular_video_loop.py       # Video processing orchestrator
 │   │   │   └── fast_yolo_pipeline.py        # Optimized pipeline
 │   │   │
+│   │   ├── generator/                       # 🆕 NODE GENERATOR
+│   │   │   ├── __init__.py
+│   │   │   └── node_generator.py            # LLM-powered node code generation
+│   │   │
+│   │   ├── custom/                          # 🆕 GENERATED NODES
+│   │   │   ├── README.md                    # Usage guide
+│   │   │   └── <auto_generated>.py          # Nodes created by generator
+│   │   │
 │   │   └── utils/
 │   │       ├── performance_stats.py         # Performance comparison & metrics
 │   │       └── visualize_detections.py      # Detection visualization
@@ -68,6 +76,7 @@ workflow_engine/
     ├── CLI_GUIDE.md                         # CLI usage guide
     ├── ARCHITECTURE.md                      # This file
     ├── LLM_MCP_INTEGRATION.md              # LLM + MCP documentation
+    ├── NODE_GENERATOR.md                   # 🆕 Node Generator documentation
     ├── REFACTORING_SUMMARY.md              # Refactoring history
     └── [10 more documentation files]
 ```
@@ -387,15 +396,97 @@ Orchestrator nodes (video/granular_video_loop.py)
 
 ## Component Interaction Matrix
 
-|                          | Core Engine | Agentic System | CLI | MCP | Nodes |
-|--------------------------|-------------|----------------|-----|-----|-------|
-| **Core Engine**          | -           | No             | Yes | Yes | Yes   |
-| **Agentic System**       | No          | -              | Yes | Yes | No    |
-| **CLI**                  | Yes         | Yes            | -   | No  | Yes   |
-| **MCP**                  | Yes         | Yes            | No  | -   | Yes   |
-| **Nodes**                | No          | No             | No  | No  | -     |
+|                          | Core Engine | Agentic System | CLI | MCP | Nodes | Node Generator |
+|--------------------------|-------------|----------------|-----|-----|-------|----------------|
+| **Core Engine**          | -           | No             | Yes | Yes | Yes   | No             |
+| **Agentic System**       | No          | -              | Yes | Yes | No    | Yes            |
+| **CLI**                  | Yes         | Yes            | -   | No  | Yes   | Yes            |
+| **MCP**                  | Yes         | Yes            | No  | -   | Yes   | No             |
+| **Nodes**                | No          | No             | No  | No  | -     | No             |
+| **Node Generator** 🆕    | No          | No             | Yes | No  | Yes   | -              |
 
-**Key Insight**: Nodes are completely isolated! They only depend on the decorator.
+**Key Insights**: 
+- Nodes are completely isolated! They only depend on the decorator.
+- Node Generator can create new nodes that are immediately discovered.
+
+---
+
+## Node Generator System 🆕
+
+### Self-Extending Capability
+
+The **Node Generator** enables the workflow engine to create new nodes on-demand:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                      Node Generator                          │
+│  - LLM-powered code generation (Ollama)                     │
+│  - Automatic @workflow_node decorator application           │
+│  - Syntax validation & AST parsing                          │
+│  - Template-based fallback generation                       │
+│  - Auto-save to workflow_nodes/custom/                      │
+└─────────────────────────────────────────────────────────────┘
+                          ↓ generates
+        ┌─────────────────┴───────────────────┐
+        ↓                                     ↓
+┌─────────────────────┐           ┌─────────────────────┐
+│ Custom Nodes        │           │ Atomic Nodes        │
+│ (custom/)           │           │ (atomic/)           │
+│                     │           │                     │
+│- User-defined logic │           │- Specialized ops    │
+│- Auto-discovered    │           │- Composable units   │
+└─────────────────────┘           └─────────────────────┘
+        ↓                                     ↓
+   Immediately available in WorkflowComposer
+```
+
+### Generation Flow
+
+```
+1. Natural Language Description
+        ↓
+2. NodeSpec Creation (goal, inputs, outputs)
+        ↓
+3. LLM Prompt Generation
+        ↓
+4. Code Generation (Ollama qwen2.5-coder:7b)
+        ↓
+5. Validation (AST parsing, decorator check)
+        ↓
+6. Auto-save to workflow_nodes/custom/
+        ↓
+7. Immediate Discovery by rglob() scan
+        ↓
+8. Available in workflows!
+```
+
+### Usage
+
+**CLI:**
+```bash
+# Generate new node
+wf generate "apply median filter" -i image -o filtered
+
+# Specify category
+wf generate "detect faces" -i image -o faces -c atomic
+
+# Show generated code
+wf generate "enhance contrast" --show-code
+```
+
+**Python API:**
+```python
+from workflow_nodes.generator.node_generator import NodeGenerator, NodeSpec
+
+spec = NodeSpec(
+    goal="Apply Gaussian blur",
+    inputs=["image", "kernel_size"],
+    outputs=["blurred"],
+    category="custom"
+)
+
+result = await generator.generate_node(spec)
+```
 
 ---
 
@@ -407,10 +498,12 @@ Orchestrator nodes (video/granular_video_loop.py)
 | `workflow_agent.py` | ~1,455 | Very High | Agentic system (4 subsystems) |
 | `workflow_agent_llm.py` | ~600 | High | LLM integration |
 | `agentic_integration.py` | ~256 | Medium | Integration layer |
-| `wf.py` | ~439 | Medium | CLI interface |
+| `wf.py` | ~500 | Medium | CLI interface (with generate cmd) |
 | `mcp_server.py` | ~590 | Medium | MCP server |
 | `workflow_decorator.py` | ~150 | Low | Decorator definition |
+| `node_generator.py` 🆕 | ~450 | Medium | LLM-powered node generation |
 | **Total Atomic Nodes** | ~1,200 | Medium | 32 independent nodes |
+| **Generated Custom Nodes** 🆕 | Variable | Variable | User-created via generator |
 
 ---
 
@@ -423,12 +516,15 @@ Orchestrator nodes (video/granular_video_loop.py)
 3. **Enhancement Layer** (`workflow_agent_llm.py`) - Optional LLM features
 4. **Interface Layer** (`wf.py`, `mcp_server.py`) - User-facing
 5. **Operations Layer** (`workflow_nodes/*`) - Independent atomic units
+6. **🆕 Generation Layer** (`node_generator.py`) - Self-extending capability
 
 **Key Strengths:**
 - ✅ Loose coupling between layers
 - ✅ Core engine works without agentic features
 - ✅ Agentic system works without LLM
 - ✅ Nodes are completely independent
+- ✅ 🆕 **Self-extending** - Can generate new nodes on-demand
+- ✅ 🆕 **LLM-powered** - Automatic code generation from natural language
 - ✅ Plugin architecture for extensibility
 - ✅ Multiple interfaces (CLI, MCP, programmatic)
 

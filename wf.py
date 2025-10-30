@@ -362,6 +362,63 @@ def cmd_templates(args):
     return 0
 
 
+def cmd_generate(args):
+    """Generate a new workflow node from description."""
+    from workflow_nodes.generator.node_generator import NodeGenerator, NodeSpec
+    import asyncio
+    
+    print(f"\n🔨 GENERATING WORKFLOW NODE")
+    print("=" * 80)
+    print(f"Goal: {args.description}")
+    
+    # Parse inputs and outputs
+    inputs = args.inputs.split(',') if args.inputs else ['input']
+    outputs = args.outputs.split(',') if args.outputs else ['output']
+    
+    print(f"Inputs: {', '.join(inputs)}")
+    print(f"Outputs: {', '.join(outputs)}")
+    print(f"Category: {args.category}")
+    print(f"Model: {args.model}")
+    
+    # Create specification
+    spec = NodeSpec(
+        goal=args.description,
+        inputs=inputs,
+        outputs=outputs,
+        category=args.category,
+        description=args.detailed_description,
+        constraints=args.constraints.split(',') if args.constraints else None
+    )
+    
+    # Generate the node
+    generator = NodeGenerator(model_name=args.model)
+    
+    try:
+        result = asyncio.run(generator.generate_node(spec))
+        
+        if result['success']:
+            print(f"\n✅ Node generated successfully!")
+            print(f"   Name: {result['node_name']}")
+            print(f"   File: {result['file_path']}")
+            print(f"\n💡 The node is immediately available for use in workflows.")
+            print(f"   Run 'wf nodes' to see all available nodes.")
+            
+            if args.show_code:
+                print(f"\n📄 Generated Code:")
+                print("=" * 80)
+                print(result['code'])
+            
+            return 0
+        else:
+            print(f"\n❌ Failed to generate node: {result['error']}")
+            return 1
+            
+    except Exception as e:
+        logger.error(f"Node generation failed: {e}", exc_info=True)
+        print(f"\n❌ Error: {e}")
+        return 1
+
+
 def main():
     parser = argparse.ArgumentParser(
         description='Workflow Engine CLI - Simplified Interface',
@@ -371,9 +428,12 @@ Examples:
   wf run workflows/granular_parallel_inference.json
   wf create "fast video detection with NPU"
   wf create "detect objects in dashcam footage" --run
+  wf generate "apply gaussian blur to image" -i image -o blurred_image
+  wf generate "extract edges using Canny" -i image -o edges -c atomic
   wf optimize workflows/my_workflow.json --target 30
   wf status
   wf devices
+  wf nodes
   wf mcp
         """
     )
@@ -423,6 +483,21 @@ Examples:
     # Templates command
     templates_parser = subparsers.add_parser('templates', help='List available templates')
     templates_parser.set_defaults(func=cmd_templates)
+    
+    # Generate command
+    generate_parser = subparsers.add_parser('generate', help='Generate a new workflow node')
+    generate_parser.add_argument('description', help='What the node should do')
+    generate_parser.add_argument('-i', '--inputs', default='input', help='Comma-separated input names (default: input)')
+    generate_parser.add_argument('-o', '--outputs', default='output', help='Comma-separated output names (default: output)')
+    generate_parser.add_argument('-c', '--category', default='custom', 
+                                 choices=['custom', 'atomic', 'infrastructure', 'utils', 'video'],
+                                 help='Node category (default: custom)')
+    generate_parser.add_argument('-d', '--detailed-description', help='Detailed description')
+    generate_parser.add_argument('--constraints', help='Comma-separated implementation constraints')
+    generate_parser.add_argument('-m', '--model', default='qwen2.5-coder:7b', 
+                                 help='Ollama model to use (default: qwen2.5-coder:7b)')
+    generate_parser.add_argument('--show-code', action='store_true', help='Display generated code')
+    generate_parser.set_defaults(func=cmd_generate)
     
     args = parser.parse_args()
     
