@@ -238,12 +238,18 @@ def cmd_nodes(args):
     """List all available workflow nodes."""
     import importlib
     import inspect
+    import sys
     from pathlib import Path
+    
+    # Add current directory to Python path for imports
+    current_dir = Path.cwd()
+    if str(current_dir) not in sys.path:
+        sys.path.insert(0, str(current_dir))
     
     print("\n🔧 AVAILABLE WORKFLOW NODES")
     print("=" * 80)
     
-    nodes_dir = Path("workflow_nodes")
+    nodes_dir = Path("src/nodes")
     discovered_nodes = {}
     
     # Scan recursively for all Python files
@@ -252,9 +258,9 @@ def cmd_nodes(args):
             continue
         
         try:
-            # Convert path to module name
-            relative_path = py_file.relative_to(nodes_dir.parent)
-            module_name = str(relative_path.with_suffix('')).replace('\\', '.').replace('/', '.')
+            # Convert path to module name (src.nodes.xxx)
+            # py_file is already relative to the project root
+            module_name = str(py_file.with_suffix('')).replace('\\', '.').replace('/', '.')
             
             module = importlib.import_module(module_name)
             
@@ -262,7 +268,8 @@ def cmd_nodes(args):
             for name, obj in inspect.getmembers(module):
                 if inspect.isfunction(obj) and hasattr(obj, 'node_id'):
                     node_id = obj.node_id
-                    category = module_name.split('.')[1] if '.' in module_name else 'other'
+                    # Use the file name as category
+                    category = py_file.stem
                     
                     if category not in discovered_nodes:
                         discovered_nodes[category] = []
@@ -274,8 +281,10 @@ def cmd_nodes(args):
                         'dependencies': getattr(obj, 'dependencies', []),
                         'isolation': getattr(obj, 'isolation_mode', 'none')
                     })
-        except Exception as e:
-            logger.debug(f"Failed to scan {py_file}: {e}")
+        
+        except Exception:
+            # Silently skip files that can't be imported
+            pass
     
     # Display by category
     category_names = {
