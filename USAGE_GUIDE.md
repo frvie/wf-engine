@@ -118,7 +118,7 @@ uv run python -m src.core.engine <workflow_file.json>
 }
 ```
 
-#### Available Workflow Templates
+#### Available Workflows 
 ```powershell
 # List all available workflows
 ls workflows/*.json
@@ -126,18 +126,15 @@ ls workflows/*.json
 # Available workflows:
 # • granular_parallel_inference.json - Multi-backend YOLO inference (CPU + NPU + DirectML)
 # • granular_video_detection.json - Video processing pipeline
-# • multi_backend_separated_v8.json - Simpler multi-backend comparison
-# • test_directml.json - DirectML isolated testing
-# • test_directml_benchmark.json - DirectML performance benchmarking
 ```
 
 #### Performance Monitoring
 ```powershell
 # Enable detailed execution logging
-uv run python workflow_orchestrator_minimal.py workflows/granular_parallel_inference.json --log-level INFO
+uv run python src/core/engine.py workflows/granular_parallel_inference.json --log-level INFO
 
 # Profile workflow performance
-uv run python -m cProfile -o workflow_profile.stats workflow_orchestrator_minimal.py workflows/granular_parallel_inference.json
+uv run python -m cProfile -o workflow_profile.stats src/core/engine.py workflows/granular_parallel_inference.json
 
 # Analyze profile results
 uv run python -c "
@@ -157,7 +154,7 @@ print('Recommended: 16GB+ for smooth granular workflow execution')
 #### Workflow Validation
 ```powershell
 # Validate workflow structure without execution
-uv run python workflow_orchestrator_minimal.py workflows/granular_parallel_inference.json --validate-only
+uv run python src/core/engine.py workflows/granular_parallel_inference.json --validate-only
 
 # Check workflow dependencies
 uv run python -c "
@@ -418,16 +415,6 @@ wfe workflows
 # • multi_backend_separated_v8.json  
 #   Strategy: unknown, Nodes: 15
 ```
-```powershell
-# See all available workflows
-wfe templates
-
-# Output shows:
-# • granular_parallel_inference.json
-#   Strategy: parallel, Nodes: 33
-# • multi_backend_separated_v8.json  
-#   Strategy: parallel, Nodes: 15
-```
 
 #### ⚡ **Execute Workflows**
 ```powershell
@@ -508,14 +495,6 @@ wfe status
 #    • multi_backend: Avg FPS: 45.1, Best FPS: 67.3
 ```
 
-#### �️ **Interactive Demos**
-```powershell
-# Run interactive demos
-wfe demo
-
-# Run demos with LLM integration
-wfe demo --llm
-```
 
 #### 🔌 **MCP Server Management**
 ```powershell

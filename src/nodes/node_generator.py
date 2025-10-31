@@ -131,11 +131,23 @@ class NodeGenerator:
         prompt = self._build_generation_prompt(spec)
         
         try:
-            # Use AutoGen with Ollama
+            # Use AutoGen with Ollama - need proper model_info for non-OpenAI models
+            from autogen_ext.models.openai._model_info import ModelInfo
+            
+            # Configure model info for Ollama models
+            ollama_model_info = ModelInfo(
+                vision=False,
+                function_calling=False, 
+                json_output=True,
+                family="qwen",  # Model family
+                structured_output=False
+            )
+            
             model_client = OpenAIChatCompletionClient(
                 model=self.model_name,
                 api_key="ollama",
-                base_url="http://localhost:11434/v1"
+                base_url="http://localhost:11434/v1",
+                model_info=ollama_model_info
             )
             
             agent = AssistantAgent(
@@ -185,10 +197,10 @@ CATEGORY: {spec.category}
 TEMPLATE TO FOLLOW:
 ```python
 from src.core.decorator import workflow_node
-import numpy as np
-# Add other imports as needed
+# Import only standard libraries at module level
+# Use conditional imports inside functions for optional dependencies
 
-@workflow_node("<descriptive_snake_case_name>", isolation_mode="none")
+@workflow_node("<descriptive_snake_case_name>", isolation_mode="none", dependencies=["package_name"])
 def <function_name>({', '.join(spec.inputs)}, **kwargs):
     \"\"\"
     <Clear one-line description>
@@ -197,32 +209,99 @@ def <function_name>({', '.join(spec.inputs)}, **kwargs):
     Single responsibility, no side effects, composable.
     
     Args:
-        {chr(10).join(f'{inp}: <type and description>' for inp in spec.inputs)}
+        {chr(10).join(f'{inp}: Input parameter (dict or raw value)' for inp in spec.inputs)}
         **kwargs: Additional optional parameters
     
     Returns:
-        {chr(10).join(f'{out}: <type and description>' for out in spec.outputs) if len(spec.outputs) > 1 else f'{spec.outputs[0]}: <type and description>'}
+        dict: Dictionary containing results and metadata
     \"\"\"
+    
+    # Import dependencies inside function to avoid import errors during node discovery
+    try:
+        import numpy as np  # Example: import inside function
+        # import other_package  # Add other imports as needed
+    except ImportError as e:
+        return {{"error": f"Missing dependency: {{e}}", "success": False}}
+    
+    # Extract data from input dictionaries (workflow engine passes dicts)
+    # Handle both dict inputs (from other nodes) and raw inputs (from workflow)
+    # Example: input_data = input.get("key") if isinstance(input, dict) else input
     
     # Implementation here
     # Follow atomic principles:
     # 1. Single responsibility
-    # 2. No global state
+    # 2. No global state  
     # 3. Pure function when possible
     # 4. Proper error handling
     
-    {f'return {", ".join(spec.outputs)}' if len(spec.outputs) > 1 else f'return {spec.outputs[0]}'}
+    # CRITICAL: Always return a dictionary for workflow engine compatibility
+    return {{
+        "main_output": result_data,
+        "metadata": additional_info,
+        "success": True
+    }}
 ```
 
 CRITICAL RULES:
-1. MUST use @workflow_node("<name>", isolation_mode="none") decorator
-2. MUST be a pure function (no global state modifications)
-3. MUST include comprehensive docstring
-4. MUST handle errors gracefully (try/except where needed)
-5. MUST follow atomic design (single responsibility)
-6. MUST include type hints in docstring
-7. Return single value or tuple based on outputs count
-8. Add proper imports (numpy, cv2, etc.)
+1. MUST use @workflow_node("<name>", isolation_mode="none", dependencies=["pkg"]) decorator
+2. MUST declare all non-standard dependencies in dependencies list
+3. MUST import dependencies INSIDE function, not at module level
+4. MUST be a pure function (no global state modifications)
+5. MUST include comprehensive docstring with error handling
+6. MUST handle ImportError gracefully for missing dependencies
+7. ALWAYS return a dictionary, never raw values
+8. Extract data from input dicts: input.get("key") if isinstance(input, dict) else input
+9. Handle both dict inputs (from nodes) and raw inputs (from workflow)
+
+WORKFLOW ENGINE BEHAVIOR - CRITICAL UNDERSTANDING:
+=================================================
+
+INPUT BEHAVIOR:
+- Engine calls your function with **filtered_inputs as keyword arguments**: func(**filtered_inputs)
+- Engine filters workflow inputs to only include your function parameters
+- Engine resolves $ references: "$node_id" becomes the entire result dict from that node
+- Engine resolves dot notation: "$node_id.key" becomes specific value from that node's result
+
+INPUT HANDLING PATTERNS:
+```python
+# PATTERN 1: Handle dict inputs from upstream nodes
+def my_node(text, **kwargs):
+    # If upstream returns {{"cleaned_text": "...", "success": True}}
+    # and workflow maps "text": "$upstream_node"
+    # then text parameter receives the ENTIRE dict
+    
+    input_data = text if isinstance(text, str) else text.get("cleaned_text", text.get("text", ""))
+
+# PATTERN 2: Handle dot notation inputs  
+def my_node(text, **kwargs):
+    # If workflow maps "text": "$upstream_node.cleaned_text"
+    # then text parameter receives just the string value directly
+    
+    input_data = text  # Already extracted by engine
+
+# PATTERN 3: Multiple upstream dependencies
+def my_node(sentences, algorithm, **kwargs):
+    # sentences from "$extract_sentences" (entire dict)
+    # algorithm from workflow direct value "tf_idf"
+    
+    sentence_list = sentences if isinstance(sentences, list) else sentences.get("sentences", [])
+    algo = algorithm  # Direct string value
+```
+
+OUTPUT BEHAVIOR:
+- Engine expects your function to return a dictionary
+- Engine stores entire return dict as results[node_id] 
+- Downstream nodes receive results based on workflow mapping
+- Engine adds metadata automatically if result is dict
+
+OUTPUT FORMAT EXAMPLES:
+- Image processing: {{"image": processed_array, "shape": array.shape}}
+- Text processing: {{"sentences": sentence_list, "metadata": {{"count": len(sentences)}}}}
+- Data analysis: {{"result": analysis_data, "stats": summary_stats}}
+- File operations: {{"path": file_path, "success": True, "size": file_size}}
+
+CRITICAL: Your output dict keys must match what downstream nodes expect!
+Check the workflow JSON to see how downstream nodes reference your outputs.
 
 Generate ONLY the Python code, no markdown formatting, no explanations.
 """
@@ -247,20 +326,24 @@ Generate ONLY the Python code, no markdown formatting, no explanations.
         # Build args docstring
         args_doc = '\n'.join(f'        {inp}: Input data' for inp in spec.inputs)
         
-        # Build returns docstring
-        if len(spec.outputs) > 1:
-            returns_doc = '\n'.join(f'        {out}: Output data' for out in spec.outputs)
-        else:
-            returns_doc = f'        {spec.outputs[0]}: Output data'
+        # Build returns docstring - always return dict
+        returns_doc = '        dict: Dictionary containing results and metadata'
         
-        # Build placeholder assignments
-        placeholder_code = '\n'.join(f'    {out} = None  # TODO: Compute {out}' for out in spec.outputs)
+        # Build placeholder assignments for dict structure
+        primary_output = spec.outputs[0] if spec.outputs else 'result'
+        placeholder_code = f'''    # Extract inputs (handle dict inputs from other nodes)
+    # processed_input = input.get("data") if isinstance(input, dict) else input
+    
+    # TODO: Implement the actual logic
+    {primary_output} = None  # Compute main result
+    
+    # Always return dictionary for workflow engine'''
         
-        # Generate return statement
-        if len(spec.outputs) == 1:
-            return_stmt = f"return {spec.outputs[0]}"
-        else:
-            return_stmt = f"return {', '.join(spec.outputs)}"
+        # Generate return statement - always return dict
+        return_stmt = f'''return {{
+        "{primary_output}": {primary_output},
+        "success": True
+    }}'''
         
         # Template code with proper indentation
         code = f'''{chr(10).join(imports)}
@@ -344,10 +427,29 @@ def {func_name}({', '.join(spec.inputs)}):
     
     def _extract_code_from_response(self, response: str) -> str:
         """Extract Python code from LLM response."""
-        # Remove markdown code blocks
+        # Handle markdown code blocks first
+        if '```python' in response:
+            # Extract content between ```python and ```
+            match = re.search(r'```python\n(.*?)```', response, re.DOTALL)
+            if match:
+                return match.group(1).strip()
+        
+        # Remove markdown code blocks (fallback)
         code = re.sub(r'```python\n', '', response)
         code = re.sub(r'```\n?', '', code)
-        code = code.strip()
+        
+        # Remove any text after return stmt or "Explanation:" line
+        lines = code.split('\n')
+        cleaned_lines = []
+        
+        for line in lines:
+            # Stop at explanatory text
+            if line.strip().startswith('Explanation:'):
+                break
+            cleaned_lines.append(line)
+        
+        # Find last return statement and include everything up to that point
+        code = '\n'.join(cleaned_lines).strip()
         return code
     
     def _extract_node_name(self, code: str) -> str:

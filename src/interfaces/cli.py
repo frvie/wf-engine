@@ -61,49 +61,102 @@ def cmd_run(args):
 
 def cmd_create(args):
     """Create workflow from natural language description."""
-    from src.agentic.integration import create_workflow_from_natural_language
+    import asyncio
     
     description = args.description
     output_path = args.output
     
-    print(f"\n🧠 Creating workflow from description:")
+    print(f"\n🤖 Creating complete workflow from description:")
     print(f"   \"{description}\"")
     print("=" * 80)
     
     try:
-        # Create workflow (LLM will be used automatically if available)
-        workflow = create_workflow_from_natural_language(description)
+        if args.agentic:
+            # Use new agentic system with node generation
+            from src.agentic.node_id_demo import AgenticWorkflowGenerator
+            
+            generator = AgenticWorkflowGenerator()
+            result = asyncio.run(generator.create_complete_workflow(description))
+            
+            if result['success']:
+                workflow_file = Path(result['workflow_file'])
+                
+                print(f"\n✅ Complete workflow created successfully!")
+                print(f"   📄 Workflow: {workflow_file}")
+                
+                gen_result = result['generation_result']
+                print(f"   🔧 Generated nodes: {len(gen_result['generated_nodes'])}")
+                
+                if gen_result['generated_nodes']:
+                    print(f"\n📝 Created node files:")
+                    for node in gen_result['generated_nodes']:
+                        print(f"      • {node['node_id']} → {node['file_path']}")
+                
+                test_result = result['test_result']
+                if test_result['success']:
+                    print(f"\n� Workflow test: PASSED")
+                else:
+                    print(f"\n⚠️  Workflow test: FAILED")
+                    if test_result.get('error'):
+                        print(f"    Error: {test_result['error']}")
+                
+                if args.run:
+                    print(f"\n▶️  Executing complete workflow...")
+                    from src.core.engine import run_function_workflow
+                    run_function_workflow(str(workflow_file))
+                else:
+                    print(f"\n💡 Run with: wfe run {workflow_file}")
+                
+                return 0
+            else:
+                print(f"\n❌ Agentic workflow creation failed")
+                if 'generation_result' in result:
+                    failed = result['generation_result'].get('failed_nodes', [])
+                    if failed:
+                        print(f"   Failed nodes:")
+                        for node in failed:
+                            print(f"      • {node['node_id']}: {node['error']}")
+                return 1
         
-        # Save workflow
-        if output_path:
-            save_path = Path(output_path)
         else:
-            # Auto-generate filename
-            safe_name = "".join(c if c.isalnum() or c in (' ', '_') else '_' for c in description[:50])
-            safe_name = safe_name.replace(' ', '_').lower()
-            save_path = Path(f"workflows/generated_{safe_name}.json")
-        
-        save_path.parent.mkdir(parents=True, exist_ok=True)
-        
-        with open(save_path, 'w') as f:
-            json.dump(workflow, f, indent=2)
-        
-        print(f"\n✅ Workflow created successfully!")
-        print(f"   Strategy: {workflow.get('workflow', {}).get('strategy', 'unknown')}")
-        print(f"   Nodes: {len(workflow.get('nodes', []))}")
-        print(f"   Saved to: {save_path}")
-        
-        if args.run:
-            print("\n▶️  Executing workflow...")
-            from src.core.engine import run_function_workflow
-            run_function_workflow(str(save_path))
-        else:
-            print(f"\n💡 Run with: wf run {save_path}")
-        
-        return 0
+            # Use existing integration system (workflow template only)
+            from src.agentic.integration import create_workflow_from_natural_language
+            
+            workflow = create_workflow_from_natural_language(description)
+            
+            # Save workflow
+            if output_path:
+                save_path = Path(output_path)
+            else:
+                # Auto-generate filename
+                safe_name = "".join(c if c.isalnum() or c in (' ', '_') else '_' for c in description[:50])
+                safe_name = safe_name.replace(' ', '_').lower()
+                save_path = Path(f"workflows/generated_{safe_name}.json")
+            
+            save_path.parent.mkdir(parents=True, exist_ok=True)
+            
+            with open(save_path, 'w') as f:
+                json.dump(workflow, f, indent=2)
+            
+            print(f"\n✅ Workflow template created successfully!")
+            print(f"   Strategy: {workflow.get('workflow', {}).get('strategy', 'unknown')}")
+            print(f"   Nodes: {len(workflow.get('nodes', []))}")
+            print(f"   Saved to: {save_path}")
+            print(f"\n⚠️  Note: You may need to implement missing nodes")
+            print(f"   Use --agentic flag for automatic node generation")
+            
+            if args.run:
+                print(f"\n▶️  Executing workflow...")
+                from src.core.engine import run_function_workflow
+                run_function_workflow(str(save_path))
+            else:
+                print(f"\n💡 Run with: wfe run {save_path}")
+            
+            return 0
         
     except Exception as e:
         logger.error(f"Failed to create workflow: {e}", exc_info=True)
+        print(f"\n❌ Error: {e}")
         return 1
 
 
@@ -413,21 +466,157 @@ def cmd_generate(args):
         return 1
 
 
+def cmd_analyze(args):
+    """Analyze workflow and generate missing nodes."""
+    from src.agentic.node_id_demo import WorkflowNodeAnalyzer
+    import asyncio
+    
+    workflow_path = Path(args.workflow)
+    
+    if not workflow_path.exists():
+        logger.error(f"Workflow not found: {workflow_path}")
+        return 1
+    
+    print(f"\n🔍 ANALYZING WORKFLOW FOR MISSING NODES")
+    print("=" * 80)
+    print(f"Workflow: {workflow_path}")
+    
+    analyzer = WorkflowNodeAnalyzer(args.model)
+    
+    try:
+        result = asyncio.run(
+            analyzer.generate_missing_nodes_from_workflow(workflow_path)
+        )
+        
+        analysis = result['analysis']
+        print(f"\n📊 Analysis Results:")
+        print(f"   Workflow: {analysis['workflow_name']}")
+        print(f"   Total nodes: {analysis['total_nodes']}")
+        print(f"   Existing: {len(analysis['existing_nodes'])}")
+        print(f"   Missing: {len(analysis['missing_nodes'])}")
+        
+        if result['generated_nodes']:
+            print(f"\n✅ Generated Nodes:")
+            for node in result['generated_nodes']:
+                print(f"   • {node['node_id']} → {node['file_path']}")
+        
+        if result['failed_nodes']:
+            print(f"\n❌ Failed to Generate:")
+            for node in result['failed_nodes']:
+                print(f"   • {node['node_id']}: {node['error']}")
+        
+        if result['success']:
+            print(f"\n🎉 All missing nodes generated successfully!")
+            print(f"   The workflow is now ready to execute.")
+            
+            if args.test:
+                print(f"\n🧪 Testing complete workflow...")
+                from src.core.engine import run_function_workflow
+                test_result = run_function_workflow(str(workflow_path))
+                if test_result:
+                    print(f"✅ Workflow test passed!")
+                else:
+                    print(f"❌ Workflow test failed!")
+            else:
+                print(f"\n💡 Test with: wfe run {workflow_path}")
+        
+        return 0 if result['success'] else 1
+        
+    except Exception as e:
+        logger.error(f"Analysis failed: {e}", exc_info=True)
+        print(f"\n❌ Error: {e}")
+        return 1
+
+
+def cmd_interactive(args):
+    """Start interactive workflow creation mode."""
+    import asyncio
+    from src.agentic.node_id_demo import AgenticWorkflowGenerator
+    
+    print("\n🤖 INTERACTIVE AGENTIC WORKFLOW GENERATOR")
+    print("=" * 80)
+    print("Enter natural language descriptions to create complete workflows!")
+    print("Type 'quit', 'exit', or 'q' to stop.\n")
+    
+    generator = AgenticWorkflowGenerator(args.model)
+    
+    async def interactive_loop():
+        while True:
+            try:
+                description = input("📝 Describe your workflow: ").strip()
+                
+                if description.lower() in ['quit', 'exit', 'q']:
+                    print("👋 Goodbye!")
+                    break
+                
+                if not description:
+                    print("Please enter a workflow description.\n")
+                    continue
+                
+                print(f"\n🔄 Creating workflow: '{description}'...")
+                
+                result = await generator.create_complete_workflow(description)
+                
+                if result['success']:
+                    print("✅ Workflow created successfully!")
+                    print(f"   📄 File: {result['workflow_file']}")
+                    
+                    gen_result = result['generation_result']
+                    print(f"   🔧 Generated: {len(gen_result['generated_nodes'])} nodes")
+                    
+                    if args.auto_run:
+                        print("   🏃 Auto-running workflow...")
+                        from src.core.engine import run_function_workflow
+                        run_function_workflow(result['workflow_file'])
+                    
+                    print()
+                else:
+                    print("❌ Workflow creation failed.\n")
+                    
+            except KeyboardInterrupt:
+                print("\n👋 Goodbye!")
+                break
+            except Exception as e:
+                print(f"❌ Error: {e}\n")
+    
+    try:
+        asyncio.run(interactive_loop())
+        return 0
+    except Exception as e:
+        logger.error(f"Interactive mode failed: {e}", exc_info=True)
+        return 1
+
+
 def main():
     parser = argparse.ArgumentParser(
         description='Workflow Engine CLI - Simplified Interface',
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
+  # Execute workflows
   wfe run workflows/granular_parallel_inference.json
+  
+  # Create workflows (template only)
   wfe create "fast video detection with NPU"
-  wfe create "detect objects in dashcam footage" --run
-  wfe generate "apply gaussian blur to image" -i image -o blurred_image
-  wfe generate "extract edges using Canny" -i image -o edges -c atomic
-  wfe optimize workflows/my_workflow.json --target 30
+  
+  # Create complete workflows (with node generation)  
+  wfe create "web scraping pipeline" --agentic --run
+  wfe create "text analysis system" --agentic -o my_workflow.json
+  
+  # Analyze existing workflows
+  wfe analyze workflows/incomplete_workflow.json --test
+  
+  # Interactive workflow creation
+  wfe interactive --auto-run
+  
+  # Generate individual nodes
+  wfe generate "apply gaussian blur" -i image -o blurred_image
+  
+  # System information
   wfe status
   wfe devices
   wfe nodes
+  wfe workflows
   wfe mcp
         """
     )
@@ -445,6 +634,8 @@ Examples:
     create_parser.add_argument('description', help='Natural language description')
     create_parser.add_argument('-o', '--output', help='Output path for workflow JSON')
     create_parser.add_argument('--run', action='store_true', help='Execute immediately after creation')
+    create_parser.add_argument('--agentic', action='store_true',
+                               help='Use agentic system with node generation')
     create_parser.set_defaults(func=cmd_create)
     
     # Optimize command
@@ -487,6 +678,23 @@ Examples:
                                  help='Ollama model to use (default: qwen2.5-coder:7b)')
     generate_parser.add_argument('--show-code', action='store_true', help='Display generated code')
     generate_parser.set_defaults(func=cmd_generate)
+    
+    # Analyze command
+    analyze_parser = subparsers.add_parser('analyze', help='Analyze workflow and generate missing nodes')
+    analyze_parser.add_argument('workflow', help='Path to workflow JSON file')
+    analyze_parser.add_argument('-m', '--model', default='qwen2.5-coder:7b',
+                                help='Ollama model to use')
+    analyze_parser.add_argument('--test', action='store_true',
+                               help='Test workflow after generation')
+    analyze_parser.set_defaults(func=cmd_analyze)
+    
+    # Interactive command
+    interactive_parser = subparsers.add_parser('interactive', help='Interactive workflow creation')
+    interactive_parser.add_argument('-m', '--model', default='qwen2.5-coder:7b',
+                                    help='Ollama model to use')
+    interactive_parser.add_argument('--auto-run', action='store_true',
+                                   help='Automatically run created workflows')
+    interactive_parser.set_defaults(func=cmd_interactive)
     
     args = parser.parse_args()
     

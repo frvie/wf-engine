@@ -46,7 +46,7 @@ def create_onnx_cpu_session_node(model_path: str) -> dict:
 
 @workflow_node("create_onnx_directml_session", 
                dependencies=["onnxruntime-directml", "opencv-python", "numpy"],
-               isolation_mode="subprocess")
+               isolation_mode="none")
 def create_onnx_directml_session_node(
     model_path: str,
     device_id: int = 0
@@ -82,9 +82,9 @@ def create_onnx_directml_session_node(
     input_shape = session.get_inputs()[0].shape
     output_names = [output.name for output in session.get_outputs()]
     
-    # For subprocess isolation, we can't return the session object (not serializable)
-    # Instead, return metadata that can be used to recreate the session
+    # Return actual session object since we're not using subprocess isolation
     return {
+        "session": session,
         "session_id": f"directml_session_{device_id}",
         "model_path": model_path,
         "provider": "DirectML",

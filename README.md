@@ -2,6 +2,78 @@
 
 The Workflow Engine is a flexible task orchestration system that executes complex workflows by automatically discovering, managing, and executing modular Python nodes. It intelligently handles dependency conflicts through environment isolation and supports parallel execution with dependency resolution.
 
+## 🤖 Agentic Workflow Generation
+
+**✅ PRODUCTION READY!** Create complete workflows from natural language using our Ollama-powered generation system:
+
+### 🚀 Quick Start - Complete Workflow Creation
+
+```bash
+# Create complete workflow with all nodes generated automatically
+wfe create "Build a text file reader and text summarization using a generative model pipeline" --agentic
+
+# Analyze and complete existing workflows
+wfe analyze workflows/my_incomplete_workflow.json --test
+
+# Interactive workflow creation mode
+wfe interactive --auto-run
+
+# Generate individual nodes  
+wfe generate "resize image" -i image -o resized_image
+```
+
+### 🎯 Real Example - Text Processing Pipeline
+
+```bash
+# This command creates a complete working workflow!
+wfe create "Build a text processing pipeline that fetches web content and summarizes it" --agentic
+```
+
+**Generated automatically:**
+- `workflows/text_processing_pipeline.json` - Complete workflow configuration
+- `src/nodes/custom/fetch_web_content.py` - Web scraping with requests
+- `src/nodes/custom/clean_and_normalize_text.py` - Text cleaning and normalization
+- `src/nodes/custom/generate_summary.py` - Text summarization 
+- `src/nodes/custom/store_summary.py` - File storage with error handling
+- `src/nodes/custom/notify_completion.py` - Completion notification
+
+**Execution:**
+```bash
+wfe run workflows/text_processing_pipeline.json
+# ✅ Workflow completed in 0.53s - All 5 nodes executed successfully!
+```
+
+### 🔧 System Capabilities
+
+The system automatically:
+- 📝 **Workflow Generation:** Creates JSON workflows from natural language descriptions
+- 🧠 **Node ID Intelligence:** Uses node IDs as semantic references for code generation
+- 🔧 **Complete Implementation:** Generates all required `@workflow_node` functions
+- 🔗 **Data Flow Analysis:** Ensures proper input/output compatibility between nodes
+- 🧪 **End-to-End Testing:** Validates complete workflow execution
+- ✅ **Production Ready:** Generates high-quality, documented, error-handled code
+
+### 🏗️ Advanced Commands
+
+```bash
+# Create workflow template only (no node generation)
+wfe create "image processing pipeline"
+
+# Create complete workflow with automatic node implementation
+wfe create "image processing pipeline" --agentic
+
+# Analyze existing workflow and generate missing nodes
+wfe analyze workflows/incomplete.json --test
+
+# Interactive mode for rapid prototyping
+wfe interactive --model qwen2.5-coder:7b --auto-run
+
+# Generate individual nodes with custom specifications
+wfe generate "apply gaussian blur" -i image -o blurred_image -c atomic
+```
+
+**Powered by:** qwen2.5-coder:7b via Ollama integration
+
 ---
 
 ## 🔑 Key Design Decisions
