@@ -41,8 +41,15 @@
     },
     {
       "id": "video_loop",
-      "function": "workflow_nodes.granular_video_loop_node.granular_video_loop_node",
+      "function": "src.nodes.granular_video_loop.granular_video_loop_node",
       "inputs": {
+        "source": "$video_capture.source",
+        "width": "$video_capture.width",
+        "height": "$video_capture.height",
+        "fps": "$video_capture.fps",
+        "session": "$directml_session.session",
+        "input_name": "$directml_session.input_name",
+        "model_path": "$download_model.model_path",
         "conf_threshold": 0.25,
         "iou_threshold": 0.45,
         "display_fps": true,
