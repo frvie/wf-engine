@@ -82,9 +82,16 @@ def create_onnx_directml_session_node(
     input_shape = session.get_inputs()[0].shape
     output_names = [output.name for output in session.get_outputs()]
     
-    # Return actual session object since we're not using subprocess isolation
+    # Return both session object and metadata for flexibility
+    # - Session object for same-process nodes (video loop, etc.)
+    # - Metadata for subprocess nodes (benchmark, etc.)
     return {
         "session": session,
+        "session_metadata": {
+            "model_path": model_path,
+            "device_id": device_id,
+            "provider": "DirectML"
+        },
         "session_id": f"directml_session_{device_id}",
         "model_path": model_path,
         "provider": "DirectML",
@@ -308,14 +315,23 @@ def run_onnx_directml_inference_benchmark_node(
     """
     import onnxruntime as ort
     import time
+    import os
     
     # Handle session metadata (from isolated execution) vs direct session object
-    if isinstance(session, dict) and 'session_id' in session:
+    if isinstance(session, dict) and 'session_metadata' in session:
         # Session metadata from isolated execution - recreate session
         session_info = session
         input_name = session_info['input_name']
-        model_path = session_info['model_path']
-        device_id = session_info.get('device_id', 0)
+        
+        # Get session recreation parameters
+        metadata = session_info['session_metadata']
+        model_path = metadata['model_path']
+        device_id = metadata.get('device_id', 0)
+        
+        # Handle subprocess path resolution
+        if not os.path.isabs(model_path):
+            project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+            model_path = os.path.join(project_root, model_path)
         
         # Recreate DirectML session in this process
         session = ort.InferenceSession(

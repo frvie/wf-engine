@@ -434,6 +434,43 @@ except Exception as e:
     sys.exit(1)
 '''
     
+    def _filter_serializable_inputs(self, inputs: Dict) -> Dict:
+        """Filter out non-serializable objects like ONNX sessions for subprocess transfer"""
+        import pickle
+        
+        filtered = {}
+        for key, value in inputs.items():
+            if isinstance(value, dict):
+                # Special handling for session objects
+                if 'session' in value and hasattr(value['session'], 'run'):
+                    # This is likely an ONNX session - create filtered version
+                    filtered_value = {k: v for k, v in value.items() if k != 'session'}
+                    # Ensure we have session_metadata for recreation
+                    if 'session_metadata' in value:
+                        filtered[key] = filtered_value
+                    else:
+                        # Skip this input if no metadata available
+                        self.logger.warning(f"Skipping non-serializable session input '{key}' - no metadata available")
+                        continue
+                else:
+                    # Try to serialize the dict to check if it's safe
+                    try:
+                        pickle.dumps(value)
+                        filtered[key] = value
+                    except (TypeError, AttributeError) as e:
+                        self.logger.warning(f"Skipping non-serializable input '{key}': {e}")
+                        continue
+            else:
+                # For non-dict values, try to serialize
+                try:
+                    pickle.dumps(value)
+                    filtered[key] = value
+                except (TypeError, AttributeError) as e:
+                    self.logger.warning(f"Skipping non-serializable input '{key}': {e}")
+                    continue
+        
+        return filtered
+    
     def _execute_in_environment(self, function_name: str, inputs: Dict, 
                                 env_info: Dict, node_id: str) -> Dict:
         """Execute function in isolated environment using subprocess with shared memory"""
@@ -457,8 +494,11 @@ except Exception as e:
         shm_input_name = f"wf_input_{node_id}_{timestamp}"
         shm_output_name = f"wf_output_{node_id}_{timestamp}"
         
+        # Filter out non-serializable objects before shared memory transfer
+        filtered_inputs = self._filter_serializable_inputs(inputs)
+        
         # Parent creates input shared memory with data
-        shm_inputs, metadata_inputs = dict_to_shared_memory_with_header(inputs, shm_input_name)
+        shm_inputs, metadata_inputs = dict_to_shared_memory_with_header(filtered_inputs, shm_input_name)
         self.logger.debug(f"[{node_id}] Created input shared memory '{shm_input_name}'")
         
         # Parent pre-creates output shared memory (10MB buffer)
